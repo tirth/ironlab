@@ -8,7 +8,7 @@
     d:DesignHeight="300" d:DesignWidth="300"
     FontSize="14"
     Background="White">
-    <Grid Name="mainGrid">
+    <Grid Name="MainGrid">
         <Grid.Resources>
             <!--
             <Style TargetType="local:Label">

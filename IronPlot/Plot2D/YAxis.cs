@@ -3,14 +3,6 @@
 using System;
 using System.Windows;
 using System.Windows.Media;
-using System.Windows.Shapes;
-using System.Windows.Controls;
-using System.Collections.Generic;
-using System.Windows.Navigation;
-using System.Windows.Data;
-using System.Linq;
-using System.Text;
-using System.Windows.Documents;
 
 namespace IronPlot
 {
@@ -18,7 +10,7 @@ namespace IronPlot
 
     public class YAxis : Axis2D
     {
-        internal double xPosition = 0;
+        internal double XPosition = 0;
 
         public static readonly DependencyProperty YAxisPositionProperty =
             DependencyProperty.Register("YAxisPosition",
@@ -27,7 +19,7 @@ namespace IronPlot
 
         public YAxisPosition Position { get { return (YAxisPosition)GetValue(YAxisPositionProperty); } set { SetValue(YAxisPositionProperty, value); } }
 
-        public YAxis() : base() 
+        public YAxis()
         {
             axisLabel.LayoutTransform = new RotateTransform(-90);
         }
@@ -35,35 +27,34 @@ namespace IronPlot
         internal override void PositionLabels(bool cullOverlapping)
         {
             if (!LabelsVisible) return;
-            TextBlock currentTextBlock;
+
             int missOut = 0, missOutMax = 0;
-            double currentTop, lastTop = Double.PositiveInfinity;
-            double verticalOffset;
-            double tickOffset = TicksVisible ? Math.Max(TickLength, 0.0) : 0;
+            var lastTop = double.PositiveInfinity;
+            var tickOffset = TicksVisible ? Math.Max(TickLength, 0.0) : 0;
+
             // Go through ticks in order of decreasing Canvas coordinate
-            for (int i = 0; i < TicksTransformed.Length; ++i)
+            for (var i = 0; i < TicksTransformed.Length; ++i)
             {
                 // Miss out labels if these would overlap.
-                currentTextBlock = TickLabelCache[i].Label;
-                verticalOffset = currentTextBlock.DesiredSize.Height - singleLineHeight / 2;
-                currentTop = AxisTotalLength - (Scale * TicksTransformed[i] - Offset) - verticalOffset;
-                currentTextBlock.SetValue(Canvas.TopProperty, currentTop);
+                var currentTextBlock = TickLabelCache[i].Label;
+                var verticalOffset = currentTextBlock.DesiredSize.Height - SingleLineHeight / 2;
+                var currentTop = AxisTotalLength - (Scale * TicksTransformed[i] - Offset) - verticalOffset;
+                currentTextBlock.Foreground = Brushes.DarkGray;  // TODO: expose property
+                currentTextBlock.SetValue(System.Windows.Controls.Canvas.TopProperty, currentTop);
 
                 if ((YAxisPosition)GetValue(YAxisPositionProperty) == YAxisPosition.Left)
                 {
                     currentTextBlock.TextAlignment = TextAlignment.Right;
-                    currentTextBlock.SetValue(Canvas.LeftProperty, xPosition - currentTextBlock.DesiredSize.Width - tickOffset - 3);
+                    currentTextBlock.SetValue(System.Windows.Controls.Canvas.LeftProperty, XPosition - currentTextBlock.DesiredSize.Width - tickOffset - 3);
                 }
                 else
                 {
                     currentTextBlock.TextAlignment = TextAlignment.Left;
-                    currentTextBlock.SetValue(Canvas.LeftProperty, xPosition + tickOffset + 3);
+                    currentTextBlock.SetValue(System.Windows.Controls.Canvas.LeftProperty, XPosition + tickOffset + 3);
                 }
 
                 if ((currentTop + currentTextBlock.DesiredSize.Height) > lastTop)
-                {
                     ++missOut;
-                }
                 else
                 {
                     lastTop = currentTop;
@@ -71,31 +62,32 @@ namespace IronPlot
                     missOut = 0;
                 }
             }
+
             missOutMax = Math.Max(missOutMax, missOut);
             missOut = 0;
+
             if (cullOverlapping)
-            {
-                for (int i = 0; i < TicksTransformed.Length; ++i)
-                {
+                for (var i = 0; i < TicksTransformed.Length; ++i)
                     if ((missOut < missOutMax) && (i > 0))
                     {
                         missOut += 1;
                         TickLabelCache[i].IsShown = false;
                     }
                     else missOut = 0;
-                }
-            }
+
             // Cycle through any now redundant TextBlocks and make invisible.
-            for (int i = TicksTransformed.Length; i < TickLabelCache.Count; ++i)
+            for (var i = TicksTransformed.Length; i < TickLabelCache.Count; ++i)
             {
                 TickLabelCache[i].IsShown = false;
             }
+
             // Finally, position axisLabel.
             if ((YAxisPosition)GetValue(YAxisPositionProperty) == YAxisPosition.Left)
-                axisLabel.SetValue(Canvas.LeftProperty, xPosition - AxisThickness);
-            else axisLabel.SetValue(Canvas.LeftProperty, xPosition + AxisThickness - axisLabel.DesiredSize.Width);
-            double yPosition = AxisTotalLength - (Scale * 0.5 * (MaxTransformed + MinTransformed) - Offset) - axisLabel.DesiredSize.Height / 2.0;
-            axisLabel.SetValue(Canvas.TopProperty, yPosition);
+                axisLabel.SetValue(System.Windows.Controls.Canvas.LeftProperty, XPosition - AxisThickness);
+            else axisLabel.SetValue(System.Windows.Controls.Canvas.LeftProperty, XPosition + AxisThickness - axisLabel.DesiredSize.Width);
+
+            var yPosition = AxisTotalLength - (Scale * 0.5 * (MaxTransformed + MinTransformed) - Offset) - axisLabel.DesiredSize.Height / 2.0;
+            axisLabel.SetValue(System.Windows.Controls.Canvas.TopProperty, yPosition);
         }
 
         internal override double LimitingTickLabelSizeForLength(int index)
@@ -120,28 +112,28 @@ namespace IronPlot
 
         internal override Point TickStartPosition(int i)
         {
-            return new Point(xPosition, AxisTotalLength - TicksTransformed[i] * Scale + Offset);
+            return new Point(XPosition, AxisTotalLength - TicksTransformed[i] * Scale + Offset);
         }
 
         internal override void RenderAxis()
         {
-            YAxisPosition position = (YAxisPosition)GetValue(YAxisPositionProperty);
-            Point tickPosition;
+            var position = (YAxisPosition)GetValue(YAxisPositionProperty);
 
-            StreamGeometryContext lineContext = axisLineGeometry.Open();
+            var lineContext = AxisLineGeometry.Open();
             if (!IsInnermost)
             {
-                Point axisStart = new Point(xPosition, AxisTotalLength - MinTransformed * Scale + Offset - axisLine.StrokeThickness / 2);
+                var axisStart = new Point(XPosition, AxisTotalLength - MinTransformed * Scale + Offset - axisLine.StrokeThickness / 2);
                 lineContext.BeginFigure(axisStart, false, false);
-                lineContext.LineTo(new Point(xPosition, AxisTotalLength - MaxTransformed * Scale + Offset + axisLine.StrokeThickness / 2), true, false);
+                lineContext.LineTo(new Point(XPosition, AxisTotalLength - MaxTransformed * Scale + Offset + axisLine.StrokeThickness / 2), true, false);
             }
             lineContext.Close();
 
-            StreamGeometryContext context = axisTicksGeometry.Open();
+            var context = AxisTicksGeometry.Open();
             if (TicksVisible)
             {
-                for (int i = 0; i < Ticks.Length; ++i)
+                for (var i = 0; i < Ticks.Length; ++i)
                 {
+                    Point tickPosition;
                     if (position == YAxisPosition.Left)
                     {
                         tickPosition = TickStartPosition(i);
@@ -149,23 +141,23 @@ namespace IronPlot
                         tickPosition.X = tickPosition.X - TickLength;
                         context.LineTo(tickPosition, true, false);
                     }
-                    if (position == YAxisPosition.Right)
-                    {
-                        tickPosition = TickStartPosition(i);
-                        context.BeginFigure(tickPosition, false, false);
-                        tickPosition.X = tickPosition.X + TickLength;
-                        context.LineTo(tickPosition, true, false);
-                    }
+
+                    if (position != YAxisPosition.Right) continue;
+
+                    tickPosition = TickStartPosition(i);
+                    context.BeginFigure(tickPosition, false, false);
+                    tickPosition.X = tickPosition.X + TickLength;
+                    context.LineTo(tickPosition, true, false);
                 }
             }
             context.Close();
             
             interactionPad.Height = AxisTotalLength - AxisPadding.Total();
             interactionPad.Width = AxisThickness;
-            if (position == YAxisPosition.Left) interactionPad.SetValue(Canvas.LeftProperty, xPosition - AxisThickness);
-            else interactionPad.SetValue(Canvas.LeftProperty, xPosition);
-            double yPosition = AxisTotalLength - MaxTransformed * Scale + Offset;
-            interactionPad.SetValue(Canvas.TopProperty, yPosition);
+            if (position == YAxisPosition.Left) interactionPad.SetValue(System.Windows.Controls.Canvas.LeftProperty, XPosition - AxisThickness);
+            else interactionPad.SetValue(System.Windows.Controls.Canvas.LeftProperty, XPosition);
+            var yPosition = AxisTotalLength - MaxTransformed * Scale + Offset;
+            interactionPad.SetValue(System.Windows.Controls.Canvas.TopProperty, yPosition);
             base.RenderAxis();
         }
 

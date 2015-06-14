@@ -1,39 +1,34 @@
 ﻿// Copyright (c) 2010 Joe Moorhouse
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
-using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
-using System.ComponentModel;
 
 namespace IronPlot
 {   
     public class Plot2DCurve : Plot2DItem
     {
         //VisualLine visualLine;
-        protected MatrixTransform graphToCanvas = new MatrixTransform(Matrix.Identity);
-        protected MatrixTransform canvasToGraph = new MatrixTransform(Matrix.Identity);
+        protected MatrixTransform GraphToCanvas = new MatrixTransform(Matrix.Identity);
+        protected MatrixTransform CanvasToGraph = new MatrixTransform(Matrix.Identity);
         
         // WPF elements:
-        private PlotPath line;
-        private PlotPath markers;
-        private PlotPath legendLine;
-        private PlotPath legendMarker;
+        private PlotPath _line;
+        private PlotPath _markers;
+        private PlotPath _legendLine;
+        private PlotPath _legendMarker;
         //private MarkersVisualHost markersVisual = new MarkersVisualHost();
-        private LegendItem legendItem;
+        private LegendItem _legendItem;
 
         // An annotation marker for displaying coordinates of a position.
-        PlotPointAnnotation annotation; 
+        PlotPointAnnotation _annotation; 
         
         // Direct2D elements:
-        private DirectPath lineD2D;
-        private DirectPathScatter markersD2D;
+        private DirectPath _lineD2D;
+        private DirectPathScatter _markersD2D;
 
         #region DependencyProperties
         public static readonly DependencyProperty MarkersTypeProperty =
@@ -208,42 +203,42 @@ namespace IronPlot
 
         protected static void OnQuickLinePropertyChanged(DependencyObject obj, DependencyPropertyChangedEventArgs e)
         {
-            string lineProperty = (string)(e.NewValue);
+            var lineProperty = (string)(e.NewValue);
             ((Plot2DCurve)obj).SetStrokePropertiesFromLineProperty(lineProperty);
         }
 
         protected static void OnQuickStrokeDashPropertyChanged(DependencyObject obj, DependencyPropertyChangedEventArgs e)
         {
-            ((Plot2DCurve)obj).line.QuickStrokeDash = (QuickStrokeDash)(e.NewValue);
+            ((Plot2DCurve)obj)._line.QuickStrokeDash = (QuickStrokeDash)(e.NewValue);
         }
 
         protected static void OnAnnotationPositionChanged(DependencyObject obj, DependencyPropertyChangedEventArgs e)
         {
-            Point canvasPosition = (Point)e.NewValue;
-            Plot2DCurve localCurve = (Plot2DCurve)obj;
+            var canvasPosition = (Point)e.NewValue;
+            var localCurve = (Plot2DCurve)obj;
             if (Double.IsNaN(canvasPosition.X) || !localCurve.AnnotationEnabled)
             {
-                localCurve.annotation.Visibility = Visibility.Collapsed;
+                localCurve._annotation.Visibility = Visibility.Collapsed;
                 return;
             }
-            else localCurve.annotation.Visibility = Visibility.Visible;
+            localCurve._annotation.Visibility = Visibility.Visible;
             int index;
-            Point curveCanvas = localCurve.SnappedCanvasPoint(canvasPosition, out index);
-            localCurve.annotation.Annotation = localCurve.AnnotationFromPoint(new Point(localCurve.curve.x[index], localCurve.curve.y[index]));
-            localCurve.annotation.SetValue(Canvas.LeftProperty, curveCanvas.X);
-            localCurve.annotation.SetValue(Canvas.TopProperty, curveCanvas.Y);
-            localCurve.annotation.InvalidateVisual();
+            var curveCanvas = localCurve.SnappedCanvasPoint(canvasPosition, out index);
+            localCurve._annotation.Annotation = localCurve.AnnotationFromPoint(new Point(localCurve._curve.x[index], localCurve._curve.y[index]));
+            localCurve._annotation.SetValue(Canvas.LeftProperty, curveCanvas.X);
+            localCurve._annotation.SetValue(Canvas.TopProperty, curveCanvas.Y);
+            localCurve._annotation.InvalidateVisual();
         }
 
         protected static void OnAnnotationEnabledChanged(DependencyObject obj, DependencyPropertyChangedEventArgs e)
         {
-            Plot2DCurve localCurve = (Plot2DCurve)obj;
-            if ((bool)e.NewValue == false) localCurve.annotation.Visibility = Visibility.Collapsed; 
+            var localCurve = (Plot2DCurve)obj;
+            if ((bool)e.NewValue == false) localCurve._annotation.Visibility = Visibility.Collapsed; 
         }
 
         #endregion
 
-        private Curve curve;
+        private readonly Curve _curve;
         
         protected override void OnHostChanged(PlotPanel host)
         {
@@ -254,7 +249,7 @@ namespace IronPlot
                 {
                     RemoveElements((bool)GetValue(UseDirect2DProperty));
                     this.host = host;
-                    BindingOperations.ClearBinding(this, Plot2DCurve.UseDirect2DProperty);
+                    BindingOperations.ClearBinding(this, UseDirect2DProperty);
                 }
                 catch (Exception) 
                 { 
@@ -265,39 +260,39 @@ namespace IronPlot
             if (this.host != null)
             {
                 AddElements();
-                curve.Transform(xAxis.GraphTransform, yAxis.GraphTransform);
+                _curve.Transform(xAxis.GraphTransform, yAxis.GraphTransform);
                 // Add binding:
-                bindingDirect2D = new Binding("UseDirect2D") { Source = host, Mode = BindingMode.OneWay };
-                BindingOperations.SetBinding(this, Plot2DCurve.UseDirect2DProperty, bindingDirect2D);
+                _bindingDirect2D = new Binding("UseDirect2D") { Source = host, Mode = BindingMode.OneWay };
+                BindingOperations.SetBinding(this, UseDirect2DProperty, _bindingDirect2D);
             }
             SetBounds();
         }
-        Binding bindingDirect2D;
+        Binding _bindingDirect2D;
 
         private void AddElements()
         {
             if ((bool)GetValue(UseDirect2DProperty) == false)
             {   
-                line.Data = LineGeometries.PathGeometryFromCurve(curve, null);
-                line.SetValue(Canvas.ZIndexProperty, 200);
-                line.Data.Transform = graphToCanvas;
-                markers.SetValue(Canvas.ZIndexProperty, 200);
-                host.Canvas.Children.Add(line);
-                host.Canvas.Children.Add(markers);
+                _line.Data = LineGeometries.PathGeometryFromCurve(_curve, null);
+                _line.SetValue(Panel.ZIndexProperty, 200);
+                _line.Data.Transform = GraphToCanvas;
+                _markers.SetValue(Panel.ZIndexProperty, 200);
+                host.Canvas.Children.Add(_line);
+                host.Canvas.Children.Add(_markers);
             }
             else
             {
-                if (!host.direct2DControl.InitializationFailed)
+                if (!host.Direct2DControl.InitializationFailed)
                 {
-                    host.direct2DControl.AddPath(lineD2D);
-                    host.direct2DControl.AddPath(markersD2D);
-                    markersD2D.GraphToCanvas = graphToCanvas;
+                    host.Direct2DControl.AddPath(_lineD2D);
+                    host.Direct2DControl.AddPath(_markersD2D);
+                    _markersD2D.GraphToCanvas = GraphToCanvas;
                 }
             }
-            Plot.Legend.Items.Add(legendItem);
-            annotation.SetValue(Canvas.ZIndexProperty, 201);
-            annotation.Visibility = Visibility.Collapsed;
-            host.Canvas.Children.Add(annotation);
+            Plot.Legend.Items.Add(_legendItem);
+            _annotation.SetValue(Panel.ZIndexProperty, 201);
+            _annotation.Visibility = Visibility.Collapsed;
+            host.Canvas.Children.Add(_annotation);
             //
             UpdateLegendMarkers();
         }
@@ -306,79 +301,79 @@ namespace IronPlot
         {
             if (removeDirect2DComponents)
             {
-                if (!host.direct2DControl.InitializationFailed)
+                if (!host.Direct2DControl.InitializationFailed)
                 {
-                    host.direct2DControl.RemovePath(lineD2D);
-                    host.direct2DControl.RemovePath(markersD2D);
+                    host.Direct2DControl.RemovePath(_lineD2D);
+                    host.Direct2DControl.RemovePath(_markersD2D);
                 }
             }
             else
             {
-                host.Canvas.Children.Remove(line);
-                host.Canvas.Children.Remove(markers);
+                host.Canvas.Children.Remove(_line);
+                host.Canvas.Children.Remove(_markers);
             }
-            Plot.Legend.Items.Remove(legendItem);
-            host.Canvas.Children.Remove(annotation);
+            Plot.Legend.Items.Remove(_legendItem);
+            host.Canvas.Children.Remove(_annotation);
         }
 
         public Plot2DCurve(Curve curve)
         {
-            this.curve = curve;
+            _curve = curve;
             Initialize();
         }
 
         public Plot2DCurve(object x, object y)
         {
-            this.curve = new Curve(Plotting.Array(x), Plotting.Array(y));
+            _curve = new Curve(Plotting.Array(x), Plotting.Array(y));
             Initialize();
         }
 
         protected void Initialize()
         {
-            line = new PlotPath();
-            markers = new PlotPath();
-            line.StrokeLineJoin = PenLineJoin.Bevel;
-            line.Visibility = Visibility.Visible;
-            markers.Visibility = Visibility.Visible;
+            _line = new PlotPath();
+            _markers = new PlotPath();
+            _line.StrokeLineJoin = PenLineJoin.Bevel;
+            _line.Visibility = Visibility.Visible;
+            _markers.Visibility = Visibility.Visible;
             //
-            annotation = new PlotPointAnnotation();
+            _annotation = new PlotPointAnnotation();
             //
-            legendItem = CreateLegendItem();
+            _legendItem = CreateLegendItem();
             //
             // Name binding
-            Binding titleBinding = new Binding("Title") { Source = this, Mode = BindingMode.OneWay };
-            legendItem.SetBinding(LegendItem.TitleProperty, titleBinding);
+            var titleBinding = new Binding("Title") { Source = this, Mode = BindingMode.OneWay };
+            _legendItem.SetBinding(LegendItem.TitleProperty, titleBinding);
             // Other bindings:
-            BindToThis(line, false, true);
-            BindToThis(legendLine, false, true);
-            BindToThis(markers, true, false);
-            BindToThis(legendMarker, true, false);
+            BindToThis(_line, false, true);
+            BindToThis(_legendLine, false, true);
+            BindToThis(_markers, true, false);
+            BindToThis(_legendMarker, true, false);
         }
 
         protected virtual LegendItem CreateLegendItem()
         {
-            LegendItem legendItem = new LegendItem();
-            Grid legendItemGrid = new Grid();
-            legendLine = new PlotPath();
-            legendMarker = new PlotPath();
-            legendMarker.HorizontalAlignment = HorizontalAlignment.Center; legendMarker.VerticalAlignment = VerticalAlignment.Center;
-            legendLine.HorizontalAlignment = HorizontalAlignment.Center; legendLine.VerticalAlignment = VerticalAlignment.Center;
-            legendLine.Data = new LineGeometry(new Point(0, 0), new Point(30, 0));
-            legendItemGrid.Children.Add(legendLine);
-            legendItemGrid.Children.Add(legendMarker);
+            var legendItem = new LegendItem();
+            var legendItemGrid = new Grid();
+            _legendLine = new PlotPath();
+            _legendMarker = new PlotPath();
+            _legendMarker.HorizontalAlignment = HorizontalAlignment.Center; _legendMarker.VerticalAlignment = VerticalAlignment.Center;
+            _legendLine.HorizontalAlignment = HorizontalAlignment.Center; _legendLine.VerticalAlignment = VerticalAlignment.Center;
+            _legendLine.Data = new LineGeometry(new Point(0, 0), new Point(30, 0));
+            legendItemGrid.Children.Add(_legendLine);
+            legendItemGrid.Children.Add(_legendMarker);
             legendItem.Content = legendItemGrid;
             return legendItem;
         }
 
         protected static void OnUseDirect2DChanged(DependencyObject obj, DependencyPropertyChangedEventArgs e)
         {
-            Plot2DCurve plot2DCurveLocal = ((Plot2DCurve)obj);
-            if ((bool)e.NewValue == true && plot2DCurveLocal.lineD2D == null)
+            var plot2DCurveLocal = ((Plot2DCurve)obj);
+            if ((bool)e.NewValue && plot2DCurveLocal._lineD2D == null)
             {
-                plot2DCurveLocal.lineD2D = new DirectPath();
-                plot2DCurveLocal.markersD2D = new DirectPathScatter() { Curve = plot2DCurveLocal.curve };
-                plot2DCurveLocal.BindToThis(plot2DCurveLocal.lineD2D, false, true);
-                plot2DCurveLocal.BindToThis(plot2DCurveLocal.markersD2D, true, false);
+                plot2DCurveLocal._lineD2D = new DirectPath();
+                plot2DCurveLocal._markersD2D = new DirectPathScatter { Curve = plot2DCurveLocal._curve };
+                plot2DCurveLocal.BindToThis(plot2DCurveLocal._lineD2D, false, true);
+                plot2DCurveLocal.BindToThis(plot2DCurveLocal._markersD2D, true, false);
             }
             if (plot2DCurveLocal.host == null) return;
             plot2DCurveLocal.RemoveElements((bool)e.OldValue);
@@ -387,66 +382,60 @@ namespace IronPlot
 
         internal override void OnAxisTypeChanged()
         {
-            curve.Transform(xAxis.GraphTransform, yAxis.GraphTransform);
+            _curve.Transform(xAxis.GraphTransform, yAxis.GraphTransform);
             SetBounds();
         }
 
         internal override void BeforeArrange()
         {
-            graphToCanvas.Matrix = new Matrix(xAxis.Scale, 0, 0, -yAxis.Scale, -xAxis.Offset - xAxis.AxisPadding.Lower, yAxis.Offset + yAxis.AxisTotalLength - yAxis.AxisPadding.Upper);
-            canvasToGraph = (MatrixTransform)(graphToCanvas.Inverse); 
-            Curve.FilterMinMax(canvasToGraph, new Rect(new Point(xAxis.Min, yAxis.Min), new Point(xAxis.Max, yAxis.Max)));
-            if (host.UseDirect2D == true && !host.direct2DControl.InitializationFailed)
+            GraphToCanvas.Matrix = new Matrix(xAxis.Scale, 0, 0, -yAxis.Scale, -xAxis.Offset - xAxis.AxisPadding.Lower, yAxis.Offset + yAxis.AxisTotalLength - yAxis.AxisPadding.Upper);
+            CanvasToGraph = (MatrixTransform)(GraphToCanvas.Inverse); 
+            Curve.FilterMinMax(CanvasToGraph, new Rect(new Point(xAxis.Min, yAxis.Min), new Point(xAxis.Max, yAxis.Max)));
+            if (host.UseDirect2D && !host.Direct2DControl.InitializationFailed)
             {
-                lineD2D.Geometry = curve.ToDirect2DPathGeometry(lineD2D.Factory, graphToCanvas);
-                markersD2D.SetGeometry((MarkersType)GetValue(MarkersTypeProperty), (double)GetValue(MarkersSizeProperty));
+                _lineD2D.Geometry = _curve.ToDirect2DPathGeometry(_lineD2D.Factory, GraphToCanvas);
+                _markersD2D.SetGeometry((MarkersType)GetValue(MarkersTypeProperty), (double)GetValue(MarkersSizeProperty));
                 //host.direct2DControl.RequestRender();
             }
             else
             {
-                line.Data = LineGeometries.PathGeometryFromCurve(curve, graphToCanvas);
-                markers.Data = MarkerGeometries.MarkersAsGeometry(Curve, graphToCanvas, (MarkersType)GetValue(MarkersTypeProperty), (double)GetValue(MarkersSizeProperty));
+                _line.Data = LineGeometries.PathGeometryFromCurve(_curve, GraphToCanvas);
+                _markers.Data = MarkerGeometries.MarkersAsGeometry(Curve, GraphToCanvas, (MarkersType)GetValue(MarkersTypeProperty), (double)GetValue(MarkersSizeProperty));
             }
-            Point annotationPoint = graphToCanvas.Transform(new Point(curve.xTransformed[0], curve.yTransformed[0]));
-            annotation.SetValue(Canvas.TopProperty, annotationPoint.Y); annotation.SetValue(Canvas.LeftProperty, annotationPoint.X);
+            var annotationPoint = GraphToCanvas.Transform(new Point(_curve.XTransformed[0], _curve.YTransformed[0]));
+            _annotation.SetValue(Canvas.TopProperty, annotationPoint.Y); _annotation.SetValue(Canvas.LeftProperty, annotationPoint.X);
         }
 
         internal Point SnappedCanvasPoint(Point canvasPoint, out int index)
         {
             index = CurveIndexFromCanvasPoint(canvasPoint);
-            return graphToCanvas.Transform(new Point(curve.xTransformed[index], curve.yTransformed[index]));
+            return GraphToCanvas.Transform(new Point(_curve.XTransformed[index], _curve.YTransformed[index]));
         }
 
         internal int CurveIndexFromCanvasPoint(Point canvasPoint)
         {
-            Point graphPoint = canvasToGraph.Transform(canvasPoint);
-            double value = curve.SortedValues == SortedValues.X ? graphPoint.X : graphPoint.Y;
-            int index = Curve.GetInterpolatedIndex(curve.TransformedSorted, value);
-            if (index == (curve.xTransformed.Length - 1)) return curve.SortedToUnsorted[curve.xTransformed.Length - 1]; 
+            var graphPoint = CanvasToGraph.Transform(canvasPoint);
+            var value = _curve.SortedValues == SortedValues.X ? graphPoint.X : graphPoint.Y;
+            var index = Curve.GetInterpolatedIndex(_curve.TransformedSorted, value);
+            if (index == (_curve.XTransformed.Length - 1)) return _curve.SortedToUnsorted[_curve.XTransformed.Length - 1]; 
             // otherwise return nearest:
-            if ((curve.TransformedSorted[index + 1] - value) < (value - curve.TransformedSorted[index]))
-                return curve.SortedToUnsorted[index + 1];
-            else return curve.SortedToUnsorted[index];
+            if ((_curve.TransformedSorted[index + 1] - value) < (value - _curve.TransformedSorted[index]))
+                return _curve.SortedToUnsorted[index + 1];
+            return _curve.SortedToUnsorted[index];
         }
 
         private void SetBounds()
         {
-            bounds = curve.Bounds();
+            bounds = _curve.Bounds();
         }
 
-        public override Rect TightBounds
-        {
-            get
-            {
-                return TransformRect(bounds, xAxis.CanvasTransform, yAxis.CanvasTransform);
-            }
-        }
+        public override Rect TightBounds => TransformRect(bounds, xAxis.CanvasTransform, yAxis.CanvasTransform);
 
         public override Rect PaddedBounds
         {
             get 
             {  
-                Rect paddedBounds =  new Rect(bounds.Left - 0.05 * bounds.Width, bounds.Top - 0.05 * bounds.Height, bounds.Width * 1.1, bounds.Height * 1.1);
+                var paddedBounds =  new Rect(bounds.Left - 0.05 * bounds.Width, bounds.Top - 0.05 * bounds.Height, bounds.Width * 1.1, bounds.Height * 1.1);
                 return TransformRect(paddedBounds, xAxis.CanvasTransform, yAxis.CanvasTransform); 
             }
         }
@@ -456,29 +445,17 @@ namespace IronPlot
             return new Rect(new Point(transformX(rect.Left), transformY(rect.Top)), new Point(transformX(rect.Right), transformY(rect.Bottom))); 
         }
 
-        public PlotPath Line
-        {
-            get { return line; }
-        }
+        public PlotPath Line => _line;
 
-        public PlotPath Markers
-        {
-            get { return markers; }
-        }
+        public PlotPath Markers => _markers;
 
-        public Rect Bounds
-        {
-            get { return bounds; }
-        }
+        public Rect Bounds => bounds;
 
-        public Curve Curve
-        {
-            get { return curve; }
-        }
+        public Curve Curve => _curve;
 
         protected string GetLinePropertyFromStrokeProperties()
         {
-            string lineProperty = "";
+            var lineProperty = "";
             switch ((QuickStrokeDash)GetValue(QuickStrokeDashProperty))
             {
                 case QuickStrokeDash.Solid:
@@ -509,22 +486,22 @@ namespace IronPlot
                     lineProperty += "^";
                     break;
             }
-            Brush brush = (Brush)GetValue(StrokeProperty);
-            if (brush == Brushes.Red) lineProperty += "r";
-            if (brush == Brushes.Green) lineProperty += "g";
-            if (brush == Brushes.Blue) lineProperty += "b";
-            if (brush == Brushes.Yellow) lineProperty += "y";
-            if (brush == Brushes.Cyan) lineProperty += "c";
-            if (brush == Brushes.Magenta) lineProperty += "m";
-            if (brush == Brushes.Black) lineProperty += "k";
-            if (brush == Brushes.White) lineProperty += "w";
+            var brush = (Brush)GetValue(StrokeProperty);
+            if (Equals(brush, Brushes.Red)) lineProperty += "r";
+            if (Equals(brush, Brushes.Green)) lineProperty += "g";
+            if (Equals(brush, Brushes.Blue)) lineProperty += "b";
+            if (Equals(brush, Brushes.Yellow)) lineProperty += "y";
+            if (Equals(brush, Brushes.Cyan)) lineProperty += "c";
+            if (Equals(brush, Brushes.Magenta)) lineProperty += "m";
+            if (Equals(brush, Brushes.Black)) lineProperty += "k";
+            if (Equals(brush, Brushes.White)) lineProperty += "w";
             return lineProperty;
         }
 
         protected void SetStrokePropertiesFromLineProperty(string lineProperty)
         {
             if (lineProperty == "") lineProperty = "-";
-            int currentIndex = 0;
+            var currentIndex = 0;
             // First check for line type
             string firstTwo = null; string firstOne = null;
             if (lineProperty.Length >= 2) firstTwo = lineProperty.Substring(0, 2);
@@ -544,7 +521,7 @@ namespace IronPlot
             else SetValue(MarkersTypeProperty, MarkersType.None);
             //
             // If no line and no marker, assume solid line
-            if ((MarkersType == MarkersType.None) && (this.QuickStrokeDash == QuickStrokeDash.None))
+            if ((MarkersType == MarkersType.None) && (QuickStrokeDash == QuickStrokeDash.None))
             {
                 QuickStrokeDash = QuickStrokeDash.Solid;
             }
@@ -565,18 +542,18 @@ namespace IronPlot
         protected void BindToThis(PlotPath target, bool includeFill, bool includeDotDash)
         {
             // Set Stroke property to apply to both the Line and Markers
-            Binding strokeBinding = new Binding("Stroke") { Source = this, Mode = BindingMode.OneWay };
-            target.SetBinding(PlotPath.StrokeProperty, strokeBinding);
+            var strokeBinding = new Binding("Stroke") { Source = this, Mode = BindingMode.OneWay };
+            target.SetBinding(Shape.StrokeProperty, strokeBinding);
             // Set StrokeThickness property also to apply to both the Line and Markers
-            Binding strokeThicknessBinding = new Binding("StrokeThickness") { Source = this, Mode = BindingMode.OneWay };
-            target.SetBinding(PlotPath.StrokeThicknessProperty, strokeThicknessBinding);
+            var strokeThicknessBinding = new Binding("StrokeThickness") { Source = this, Mode = BindingMode.OneWay };
+            target.SetBinding(Shape.StrokeThicknessProperty, strokeThicknessBinding);
             // Fill binding
-            Binding fillBinding = new Binding("MarkersFill") { Source = this, Mode = BindingMode.OneWay };
-            if (includeFill) target.SetBinding(PlotPath.FillProperty, fillBinding);
+            var fillBinding = new Binding("MarkersFill") { Source = this, Mode = BindingMode.OneWay };
+            if (includeFill) target.SetBinding(Shape.FillProperty, fillBinding);
             // Dot-dash of line
             if (includeDotDash)
             {
-                Binding dashBinding = new Binding("QuickStrokeDash") { Source = this, Mode = BindingMode.OneWay };
+                var dashBinding = new Binding("QuickStrokeDash") { Source = this, Mode = BindingMode.OneWay };
                 target.SetBinding(PlotPath.QuickStrokeDashProperty, dashBinding);
             }     
         }
@@ -584,27 +561,27 @@ namespace IronPlot
         protected void BindToThis(DirectPath target, bool includeFill, bool includeDotDash)
         {
             // Set Stroke property to apply to both the Line and Markers
-            Binding strokeBinding = new Binding("Stroke") { Source = this, Mode = BindingMode.OneWay };
+            var strokeBinding = new Binding("Stroke") { Source = this, Mode = BindingMode.OneWay };
             target.SetBinding(DirectPath.StrokeProperty, strokeBinding);
             // Set StrokeThickness property also to apply to both the Line and Markers
-            Binding strokeThicknessBinding = new Binding("StrokeThickness") { Source = this, Mode = BindingMode.OneWay };
+            var strokeThicknessBinding = new Binding("StrokeThickness") { Source = this, Mode = BindingMode.OneWay };
             target.SetBinding(DirectPath.StrokeThicknessProperty, strokeThicknessBinding);
             // Fill binding
-            Binding fillBinding = new Binding("MarkersFill") { Source = this, Mode = BindingMode.OneWay };
+            var fillBinding = new Binding("MarkersFill") { Source = this, Mode = BindingMode.OneWay };
             if (includeFill) target.SetBinding(DirectPath.FillProperty, fillBinding);
             // Dot-dash of line
             if (includeDotDash)
             {
-                Binding dashBinding = new Binding("QuickStrokeDash") { Source = this, Mode = BindingMode.OneWay };
+                var dashBinding = new Binding("QuickStrokeDash") { Source = this, Mode = BindingMode.OneWay };
                 target.SetBinding(DirectPath.QuickStrokeDashProperty, dashBinding);
             }
         }
 
         internal void UpdateLegendMarkers()
         {
-            double markersSize = (double)GetValue(MarkersSizeProperty);
-            legendMarker.Data = MarkerGeometries.LegendMarkerGeometry((MarkersType)GetValue(MarkersTypeProperty), markersSize);
-            if (legendMarker.Data != null) legendMarker.Data.Transform = new TranslateTransform(markersSize / 2, markersSize / 2);
+            var markersSize = (double)GetValue(MarkersSizeProperty);
+            _legendMarker.Data = MarkerGeometries.LegendMarkerGeometry((MarkersType)GetValue(MarkersTypeProperty), markersSize);
+            if (_legendMarker.Data != null) _legendMarker.Data.Transform = new TranslateTransform(markersSize / 2, markersSize / 2);
         }
     }
 }

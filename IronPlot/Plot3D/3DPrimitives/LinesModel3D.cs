@@ -1,17 +1,15 @@
 ﻿// Copyright (c) 2010 Joe Moorhouse
 
 using System;
-using System.Windows;
 using System.Collections.Generic;
+using System.Reflection;
+using System.Runtime.InteropServices;
+using System.Windows;
 using System.Windows.Media;
-using System.Linq;
-using System.Text;
+using System.Windows.Media.Media3D;
 using SharpDX;
 using SharpDX.Direct3D9;
-using System.Windows.Media.Media3D;
-using System.Runtime.InteropServices;
-using System.Windows.Markup;
-using Color = System.Drawing.Color;
+using Colors = System.Windows.Media.Colors;
 
 namespace IronPlot.Plotting3D
 {
@@ -47,20 +45,20 @@ namespace IronPlot.Plotting3D
     public class LinesModel3D : Model3D, IResolutionDependent
     {
         // Fields associated with rendering of lines
-        private VertexPositionColor[] vertices;
-        private ThickLinesVertex[] thickVertices;
-        private VertexDeclaration vertexDeclaration;
+        private VertexPositionColor[] _vertices;
+        private ThickLinesVertex[] _thickVertices;
+        private VertexDeclaration _vertexDeclaration;
         //Vector3[] verticesVectors;
-        private short[] indices;
-        protected VertexBuffer vertexBuffer = null;
-        protected IndexBuffer indexBuffer = null;
-        private static Effect effect;
-        private bool pointsChanged = true;
+        private short[] _indices;
+        protected VertexBuffer VertexBuffer;
+        protected IndexBuffer IndexBuffer;
+        private static Effect _effect;
+        private bool _pointsChanged = true;
         // Denotes where single pixel lines or thick lines should be drawn
-        private bool thickLines = true;
-        private int dpi = 96;
+        private bool _thickLines = true;
+        private int _dpi = 96;
 
-        bool effectUnavailable = false;
+        bool _effectUnavailable;
 
         /// <summary>
         /// Update geometry from point collection (rather than have event on collection itself, this must
@@ -68,8 +66,8 @@ namespace IronPlot.Plotting3D
         /// </summary>
         public void UpdateFromPoints()
         {
-            pointsChanged = true;
-            geometryChanged = true;
+            _pointsChanged = true;
+            GeometryChanged = true;
         }
 
         private static readonly DependencyProperty PointCollectionProperty =
@@ -94,20 +92,20 @@ namespace IronPlot.Plotting3D
 
         static void LineThicknessChanged(DependencyObject obj, DependencyPropertyChangedEventArgs args)
         {
-            LinesModel3D lines = obj as LinesModel3D;
-            bool previousThickLines = lines.thickLines;
-            bool thickLines = true;
-            if (lines.effectUnavailable || (((double)args.NewValue == 1.0) && (lines.dpi == 96))) thickLines = false;
+            var lines = obj as LinesModel3D;
+            var previousThickLines = lines._thickLines;
+            var thickLines = true;
+            if (lines._effectUnavailable || (((double)args.NewValue == 1.0) && (lines._dpi == 96))) thickLines = false;
             if (previousThickLines != thickLines)
             {
-                lines.pointsChanged = true;
-                lines.geometryChanged = true;
-                lines.thickVertices = null;
-                lines.indices = null;
-                lines.vertices = null;
+                lines._pointsChanged = true;
+                lines.GeometryChanged = true;
+                lines._thickVertices = null;
+                lines._indices = null;
+                lines._vertices = null;
             }
-            lines.thickLines = thickLines;
-            lines.viewportImage.RequestRender();
+            lines._thickLines = thickLines;
+            lines.ViewportImage.RequestRender();
         }
 
         public double LineThickness
@@ -116,41 +114,41 @@ namespace IronPlot.Plotting3D
             get { return (double)GetValue(LineThicknessProperty); }
         }
 
-        public LinesModel3D() : base() 
+        public LinesModel3D()
         {
             Points = new List<Point3DColor>();
-            pointsChanged = true;
+            _pointsChanged = true;
         }
 
         internal override void OnViewportImageChanged(ViewportImage newViewportImage)
         {
-            ViewportImage oldViewportImage = viewportImage;
+            var oldViewportImage = ViewportImage;
             if (oldViewportImage != null)
             {
-                viewportImage.GraphicsDeviceService.DeviceReset -= new EventHandler(GraphicsDeviceService_DeviceReset);
-                viewportImage.GraphicsDeviceService.DeviceResetting -= new EventHandler(GraphicsDeviceService_DeviceResetting);
+                ViewportImage.GraphicsDeviceService.DeviceReset -= GraphicsDeviceService_DeviceReset;
+                ViewportImage.GraphicsDeviceService.DeviceResetting -= GraphicsDeviceService_DeviceResetting;
             }
             base.OnViewportImageChanged(newViewportImage);
-            if (!viewportImage.GraphicsDeviceService.IsAntialiased) LineThickness = 1.0;
-            viewportImage.GraphicsDeviceService.DeviceReset += new EventHandler(GraphicsDeviceService_DeviceReset);
-            viewportImage.GraphicsDeviceService.DeviceResetting += new EventHandler(GraphicsDeviceService_DeviceResetting);
+            if (!ViewportImage.GraphicsDeviceService.IsAntialiased) LineThickness = 1.0;
+            ViewportImage.GraphicsDeviceService.DeviceReset += GraphicsDeviceService_DeviceReset;
+            ViewportImage.GraphicsDeviceService.DeviceResetting += GraphicsDeviceService_DeviceResetting;
             TryCreateEffects();
             UpdateGeometry();
         }
 
         private void TryCreateEffects()
         {
-            if (!effectUnavailable && effect == null)
+            if (!_effectUnavailable && _effect == null)
             {
                 try
                 {
-                    System.IO.Stream stream = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("IronPlot.Plot3D._3DPrimitives.Line.fxo");
-                    effect = Effect.FromStream(graphicsDevice, stream, ShaderFlags.None);             
+                    var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("IronPlot.Plot3D._3DPrimitives.Line.fxo");
+                    _effect = Effect.FromStream(graphicsDevice, stream, ShaderFlags.None);             
                 }
                 catch (Exception) 
                 {
-                    effectUnavailable = true;
-                    thickLines = false;
+                    _effectUnavailable = true;
+                    _thickLines = false;
                 }
             }
         }
@@ -158,21 +156,21 @@ namespace IronPlot.Plotting3D
         protected override void UpdateGeometry()
         {
             if (Points.Count == 0) return;
-            if (pointsChanged)
+            if (_pointsChanged)
             {
-                if (this.IsVisible) RecreateBuffers();
-                pointsChanged = false;
+                if (IsVisible) RecreateBuffers();
+                _pointsChanged = false;
             }
             short vertexIndex = 0;
             short index = 0;
-            if (!thickLines)
+            if (!_thickLines)
             {
                 Point3D modelPoint;
-                foreach (Point3DColor p in Points)
+                foreach (var p in Points)
                 {
                     modelPoint = ModelToWorld.Transform(p.Point3D);
-                    vertices[index] = new VertexPositionColor(new Vector3((float)modelPoint.X, (float)modelPoint.Y, (float)modelPoint.Z), Point3DColor.ColorToInt(p.Color));
-                    indices[index] = index;
+                    _vertices[index] = new VertexPositionColor(new Vector3((float)modelPoint.X, (float)modelPoint.Y, (float)modelPoint.Z), Point3DColor.ColorToInt(p.Color));
+                    _indices[index] = index;
                     index++;
                 }
             }
@@ -180,70 +178,70 @@ namespace IronPlot.Plotting3D
             {
                 Point3D start, end;
                 int color;
-                for (int i = 0; i < Points.Count - 1; i += 2)
+                for (var i = 0; i < Points.Count - 1; i += 2)
                 {
                     start = ModelToWorld.Transform(Points[i].Point3D);
                     end = ModelToWorld.Transform(Points[i + 1].Point3D);
                     color = Point3DColor.ColorToInt(Points[i].Color);
-                    thickVertices[vertexIndex] = new ThickLinesVertex(new Vector3((float)start.X, (float)start.Y, (float)start.Z),
+                    _thickVertices[vertexIndex] = new ThickLinesVertex(new Vector3((float)start.X, (float)start.Y, (float)start.Z),
                         new Vector3((float)end.X, (float)end.Y, (float)end.Z),
                         new Vector2(0, -0.5f), color);
-                    thickVertices[vertexIndex + 1] = new ThickLinesVertex(new Vector3((float)start.X, (float)start.Y, (float)start.Z),
+                    _thickVertices[vertexIndex + 1] = new ThickLinesVertex(new Vector3((float)start.X, (float)start.Y, (float)start.Z),
                         new Vector3((float)end.X, (float)end.Y, (float)end.Z),
                         new Vector2(1, -0.5f), color);
-                    thickVertices[vertexIndex + 2] = new ThickLinesVertex(new Vector3((float)start.X, (float)start.Y, (float)start.Z),
+                    _thickVertices[vertexIndex + 2] = new ThickLinesVertex(new Vector3((float)start.X, (float)start.Y, (float)start.Z),
                         new Vector3((float)end.X, (float)end.Y, (float)end.Z),
                         new Vector2(1, 0.5f), color);
-                    thickVertices[vertexIndex + 3] = new ThickLinesVertex(new Vector3((float)start.X, (float)start.Y, (float)start.Z),
+                    _thickVertices[vertexIndex + 3] = new ThickLinesVertex(new Vector3((float)start.X, (float)start.Y, (float)start.Z),
                         new Vector3((float)end.X, (float)end.Y, (float)end.Z),
                         new Vector2(0, 0.5f), color);
-                    indices[index] = vertexIndex; indices[index + 1] = (short)(vertexIndex + 1); indices[index + 2] = (short)(vertexIndex + 2);
-                    indices[index + 3] = vertexIndex; indices[index + 4] = (short)(vertexIndex + 2); indices[index + 5] = (short)(vertexIndex + 3);
+                    _indices[index] = vertexIndex; _indices[index + 1] = (short)(vertexIndex + 1); _indices[index + 2] = (short)(vertexIndex + 2);
+                    _indices[index + 3] = vertexIndex; _indices[index + 4] = (short)(vertexIndex + 2); _indices[index + 5] = (short)(vertexIndex + 3);
                     vertexIndex += 4;
                     index += 6;
                 }
             }
-            if (this.IsVisible) FillBuffers();
+            if (IsVisible) FillBuffers();
         }
 
         protected void RecreateBuffers()
         {
             Pool pool;
-            if (viewportImage.GraphicsDeviceService.UseDeviceEx == true) pool = Pool.Default;
+            if (ViewportImage.GraphicsDeviceService.UseDeviceEx) pool = Pool.Default;
             else pool = Pool.Managed;
-            if (!thickLines)
+            if (!_thickLines)
             {
                 // Prepare for using single-pixel lines
-                if ((vertices == null) || (vertices.Length != Points.Count) || (vertexBuffer == null))
+                if ((_vertices == null) || (_vertices.Length != Points.Count) || (VertexBuffer == null))
                 {
-                    if (vertexBuffer != null) vertexBuffer.Dispose();
-                    if ((vertices == null) || (vertices.Length != Points.Count)) vertices = new VertexPositionColor[Points.Count];
-                    vertexBuffer = new VertexBuffer(graphicsDevice, vertices.Length * VertexPositionColor.SizeInBytes,
+                    if (VertexBuffer != null) VertexBuffer.Dispose();
+                    if ((_vertices == null) || (_vertices.Length != Points.Count)) _vertices = new VertexPositionColor[Points.Count];
+                    VertexBuffer = new VertexBuffer(graphicsDevice, _vertices.Length * VertexPositionColor.SizeInBytes,
                         Usage.WriteOnly, VertexFormat.Position | VertexFormat.Diffuse, pool);
                 }
-                if ((indices == null) || (indices.Length != Points.Count) || (indexBuffer == null))
+                if ((_indices == null) || (_indices.Length != Points.Count) || (IndexBuffer == null))
                 {
-                    if (indexBuffer != null) indexBuffer.Dispose();
-                    if ((indices == null) || (indices.Length != Points.Count)) indices = new short[Points.Count];
-                    indexBuffer = new IndexBuffer(graphicsDevice, indices.Length * Marshal.SizeOf(typeof(short)),
+                    if (IndexBuffer != null) IndexBuffer.Dispose();
+                    if ((_indices == null) || (_indices.Length != Points.Count)) _indices = new short[Points.Count];
+                    IndexBuffer = new IndexBuffer(graphicsDevice, _indices.Length * Marshal.SizeOf(typeof(short)),
                         Usage.WriteOnly, pool, true);
                 }
             }
             else
             {
                 // Prepare for thick lines. 4 vertices and 6 indices per line.
-                if ((thickVertices == null) || (thickVertices.Length != Points.Count * 4) || (vertexBuffer == null))
+                if ((_thickVertices == null) || (_thickVertices.Length != Points.Count * 4) || (VertexBuffer == null))
                 {
-                    if (vertexBuffer != null) vertexBuffer.Dispose();
-                    if ((thickVertices == null) || (thickVertices.Length != Points.Count * 4)) thickVertices = new ThickLinesVertex[Points.Count * 4];
-                    vertexBuffer = new VertexBuffer(graphicsDevice, thickVertices.Length * ThickLinesVertex.SizeInBytes,
+                    if (VertexBuffer != null) VertexBuffer.Dispose();
+                    if ((_thickVertices == null) || (_thickVertices.Length != Points.Count * 4)) _thickVertices = new ThickLinesVertex[Points.Count * 4];
+                    VertexBuffer = new VertexBuffer(graphicsDevice, _thickVertices.Length * ThickLinesVertex.SizeInBytes,
                         Usage.WriteOnly, VertexFormat.Position | VertexFormat.Texture0 | VertexFormat.Texture1 | VertexFormat.Diffuse, pool);
                 }
-                if ((indices == null) || (indices.Length != Points.Count * 6) || (indexBuffer == null))
+                if ((_indices == null) || (_indices.Length != Points.Count * 6) || (IndexBuffer == null))
                 {
-                    if (indexBuffer != null) indexBuffer.Dispose();
-                    if ((indices == null) || (indices.Length != Points.Count * 6)) indices = new short[6 * Points.Count];
-                    indexBuffer = new IndexBuffer(graphicsDevice, indices.Length * Marshal.SizeOf(typeof(short)),
+                    if (IndexBuffer != null) IndexBuffer.Dispose();
+                    if ((_indices == null) || (_indices.Length != Points.Count * 6)) _indices = new short[6 * Points.Count];
+                    IndexBuffer = new IndexBuffer(graphicsDevice, _indices.Length * Marshal.SizeOf(typeof(short)),
                         Usage.WriteOnly, pool, true);
                 }
             }
@@ -252,31 +250,30 @@ namespace IronPlot.Plotting3D
         protected void FillBuffers()
         {
             DataStream stream, streamIndex;
-            if (!thickLines)
+            if (!_thickLines)
             {
-                stream = vertexBuffer.Lock(0, 0, LockFlags.None);
-                stream.WriteRange(vertices);
-                vertexBuffer.Unlock();
+                stream = VertexBuffer.Lock(0, 0, LockFlags.None);
+                stream.WriteRange(_vertices);
+                VertexBuffer.Unlock();
                 graphicsDevice.VertexFormat = VertexFormat.Position | VertexFormat.Diffuse;
             }
             else
             {
-                stream = vertexBuffer.Lock(0, 0, LockFlags.None);
-                stream.WriteRange(thickVertices);
-                vertexBuffer.Unlock();
-                VertexElement[] velements = new VertexElement[]
-                {
+                stream = VertexBuffer.Lock(0, 0, LockFlags.None);
+                stream.WriteRange(_thickVertices);
+                VertexBuffer.Unlock();
+                VertexElement[] velements = {
                      new VertexElement(0, 0, DeclarationType.Float3, DeclarationMethod.Default, DeclarationUsage.Position, 0),
                      new VertexElement(0, 12, DeclarationType.Float3, DeclarationMethod.Default, DeclarationUsage.TextureCoordinate, 0),
                      new VertexElement(0, 24, DeclarationType.Float2, DeclarationMethod.Default, DeclarationUsage.TextureCoordinate, 1),
                      new VertexElement(0, 32, DeclarationType.Color, DeclarationMethod.Default, DeclarationUsage.Color, 0),
-                     VertexElement.VertexDeclarationEnd,
+                     VertexElement.VertexDeclarationEnd
                 };
-                vertexDeclaration = new VertexDeclaration(graphicsDevice, velements);
+                _vertexDeclaration = new VertexDeclaration(graphicsDevice, velements);
             }
-            streamIndex = indexBuffer.Lock(0, 0, LockFlags.None);
-            streamIndex.WriteRange(indices);
-            indexBuffer.Unlock();
+            streamIndex = IndexBuffer.Lock(0, 0, LockFlags.None);
+            streamIndex.WriteRange(_indices);
+            IndexBuffer.Unlock();
         }
 
         /// <summary>
@@ -285,49 +282,49 @@ namespace IronPlot.Plotting3D
         {
             base.Draw();
 
-            if (vertexBuffer == null || indexBuffer == null) return;
+            if (VertexBuffer == null || IndexBuffer == null) return;
 
             graphicsDevice.SetRenderState(RenderState.MultisampleAntialias, true);
             graphicsDevice.SetRenderState(RenderState.FillMode, FillMode.Solid);
             graphicsDevice.SetRenderState(RenderState.DepthBias, DepthBias);
             int primitiveCount;
-            if (!thickLines)
+            if (!_thickLines)
             {
                 graphicsDevice.SetRenderState(RenderState.Lighting, false);
                 graphicsDevice.VertexFormat = VertexFormat.Position | VertexFormat.Diffuse;
-                graphicsDevice.SetStreamSource(0, vertexBuffer, 0, Marshal.SizeOf(typeof(VertexPositionColor)));
-                graphicsDevice.Indices = indexBuffer;
-                primitiveCount = indices.Length / 2;
-                graphicsDevice.DrawIndexedPrimitive(PrimitiveType.LineList, 0, 0, vertices.Length, 0, primitiveCount);
+                graphicsDevice.SetStreamSource(0, VertexBuffer, 0, Marshal.SizeOf(typeof(VertexPositionColor)));
+                graphicsDevice.Indices = IndexBuffer;
+                primitiveCount = _indices.Length / 2;
+                graphicsDevice.DrawIndexedPrimitive(PrimitiveType.LineList, 0, 0, _vertices.Length, 0, primitiveCount);
             }
             else
             {
-                graphicsDevice.VertexDeclaration = vertexDeclaration;
-                graphicsDevice.SetStreamSource(0, vertexBuffer, 0, Marshal.SizeOf(typeof(ThickLinesVertex)));
-                graphicsDevice.Indices = indexBuffer;
-                effect.Technique = "Simplest";
-                effect.SetValue("XPixels", (float)viewportImage.Width);
-                effect.SetValue("YPixels", (float)viewportImage.Height);
-                effect.SetValue("LineWidth", (float)LineThickness * (float)dpi / 96.0f);
-                effect.SetValue("ViewProjection", viewportImage.View * viewportImage.Projection);
-                primitiveCount = indices.Length / 6;
-                int numpasses = effect.Begin(0);
-                for (int i = 0; i < numpasses; i++)
+                graphicsDevice.VertexDeclaration = _vertexDeclaration;
+                graphicsDevice.SetStreamSource(0, VertexBuffer, 0, Marshal.SizeOf(typeof(ThickLinesVertex)));
+                graphicsDevice.Indices = IndexBuffer;
+                _effect.Technique = "Simplest";
+                _effect.SetValue("XPixels", (float)ViewportImage.Width);
+                _effect.SetValue("YPixels", (float)ViewportImage.Height);
+                _effect.SetValue("LineWidth", (float)LineThickness * _dpi / 96.0f);
+                _effect.SetValue("ViewProjection", ViewportImage.View * ViewportImage.Projection);
+                primitiveCount = _indices.Length / 6;
+                var numpasses = _effect.Begin(0);
+                for (var i = 0; i < numpasses; i++)
                 {
-                    effect.BeginPass(i);
-                    graphicsDevice.DrawIndexedPrimitive(PrimitiveType.TriangleList, 0, 0, thickVertices.Length, 0, primitiveCount);
-                    effect.EndPass();
+                    _effect.BeginPass(i);
+                    graphicsDevice.DrawIndexedPrimitive(PrimitiveType.TriangleList, 0, 0, _thickVertices.Length, 0, primitiveCount);
+                    _effect.EndPass();
                 }
-                effect.End();
+                _effect.End();
             }
         }
 
         protected void GraphicsDeviceService_DeviceResetting(object sender, EventArgs e)
         {
-            if (effect != null)
+            if (_effect != null)
             {
-                effect.Dispose();
-                effect = null;
+                _effect.Dispose();
+                _effect = null;
             }
         }
 
@@ -338,25 +335,25 @@ namespace IronPlot.Plotting3D
 
         public void SetResolution(int dpi)
         {
-            if (dpi != this.dpi)
+            if (dpi != _dpi)
             {
-                this.dpi = dpi;
-                pointsChanged = true;
-                geometryChanged = true;
-                thickVertices = null;
-                indices = null;
-                vertices = null;
+                _dpi = dpi;
+                _pointsChanged = true;
+                GeometryChanged = true;
+                _thickVertices = null;
+                _indices = null;
+                _vertices = null;
             }
-            if (effectUnavailable || ((LineThickness == 1.0) && (dpi == 96))) thickLines = false;
-            else thickLines = true;
+            if (_effectUnavailable || ((LineThickness == 1.0) && (dpi == 96))) _thickLines = false;
+            else _thickLines = true;
         }
 
         protected override void DisposeDisposables()
         {
             base.DisposeDisposables();
-            if (vertexBuffer != null) vertexBuffer.Dispose();
-            if (indexBuffer != null) indexBuffer.Dispose();
-            vertexBuffer = null; indexBuffer = null;
+            if (VertexBuffer != null) VertexBuffer.Dispose();
+            if (IndexBuffer != null) IndexBuffer.Dispose();
+            VertexBuffer = null; IndexBuffer = null;
         }
 
         protected override void RecreateDisposables()
@@ -377,7 +374,7 @@ namespace IronPlot.Plotting3D
     public struct Point3DColor
     {
         public Point3D Point3D;
-        public System.Windows.Media.Color Color;
+        public Color Color;
 
         public double X
         {
@@ -397,7 +394,7 @@ namespace IronPlot.Plotting3D
             set { Point3D.X = value; }
         }
 
-        public Point3DColor(Point3D point3D, System.Windows.Media.Color color)
+        public Point3DColor(Point3D point3D, Color color)
         {
             Point3D = point3D;
             Color = color;
@@ -406,10 +403,10 @@ namespace IronPlot.Plotting3D
         public Point3DColor(Point3D point3D)
         {
             Point3D = point3D;
-            Color = System.Windows.Media.Colors.Black;
+            Color = Colors.Black;
         }
 
-        public Point3DColor(double x, double y, double z, System.Windows.Media.Color color)
+        public Point3DColor(double x, double y, double z, Color color)
         {
             Point3D = new Point3D(x, y, z);
             Color = color;
@@ -418,10 +415,10 @@ namespace IronPlot.Plotting3D
         public Point3DColor(double x, double y, double z)
         {
             Point3D = new Point3D(x, y, z);
-            Color = System.Windows.Media.Colors.Black;
+            Color = Colors.Black;
         }
 
-        public static int ColorToInt(System.Windows.Media.Color color)
+        public static int ColorToInt(Color color)
         {
             return (255 << 24)      // A 
                 | (color.R << 16)    // R

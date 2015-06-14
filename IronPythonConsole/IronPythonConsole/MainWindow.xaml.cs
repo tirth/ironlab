@@ -1,120 +1,103 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.IO;
-using System.Xml;
 using System.Windows;
-using System.Windows.Threading;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using ICSharpCode.AvalonEdit.CodeCompletion;
-using ICSharpCode.AvalonEdit.Folding;
+using System.Xml;
 using ICSharpCode.AvalonEdit.Highlighting;
-using Microsoft.Win32;
-using System.Resources;
-using System.Windows.Controls.WpfPropertyGrid;
+using ICSharpCode.AvalonEdit.Highlighting.Xshd;
 using Microsoft.Scripting;
-using Microsoft.Scripting.Hosting;
+using Microsoft.Win32;
 
 namespace IronPythonConsole
 {
     /// <summary>
     /// Interaction logic for MainWindow.xaml
     /// </summary>
-    public partial class MainWindow : Window
+    public partial class MainWindow
     {
-        ConsoleOptions consoleOptionsProvider;
+        readonly ConsoleOptions _consoleOptionsProvider;
         
         public MainWindow()
 		{
-            Initialized += new EventHandler(MainWindow_Initialized);
+            Initialized += MainWindow_Initialized;
             // Load our custom highlighting definition:
             IHighlightingDefinition pythonHighlighting;
-            using (Stream s = typeof(MainWindow).Assembly.GetManifestResourceStream("IronPythonConsole.Resources.Python.xshd"))
+            using (var s = typeof(MainWindow).Assembly.GetManifestResourceStream("IronPythonConsole.Resources.Python.xshd"))
             {
                 if (s == null)
                     throw new InvalidOperationException("Could not find embedded resource");
                 using (XmlReader reader = new XmlTextReader(s))
-                {
-                    pythonHighlighting = ICSharpCode.AvalonEdit.Highlighting.Xshd.
-                        HighlightingLoader.Load(reader, HighlightingManager.Instance);
-                }
+                    pythonHighlighting = HighlightingLoader.Load(reader, HighlightingManager.Instance);
             }
             // and register it in the HighlightingManager
-            HighlightingManager.Instance.RegisterHighlighting("Python Highlighting", new string[] { ".cool" }, pythonHighlighting);
+            HighlightingManager.Instance.RegisterHighlighting("Python Highlighting", new[] { ".cool" }, pythonHighlighting);
             	
 			InitializeComponent();
 
-            textEditor.SyntaxHighlighting = pythonHighlighting;
+            TextEditor.SyntaxHighlighting = pythonHighlighting;
 
-            textEditor.PreviewKeyDown += new KeyEventHandler(textEditor_PreviewKeyDown);
+            TextEditor.PreviewKeyDown += textEditor_PreviewKeyDown;
 
-            consoleOptionsProvider = new ConsoleOptions(console.Pad);
+            _consoleOptionsProvider = new ConsoleOptions(Console.Pad);
 
-            propertyGridComboBox.SelectedIndex = 0;
+            PropertyGridComboBox.SelectedIndex = 0;
 
-            expander.Expanded += new RoutedEventHandler(expander_Expanded);
+            Expander.Expanded += expander_Expanded;
 
-            console.Pad.Host.ConsoleCreated +=new PythonConsoleControl.ConsoleCreatedEventHandler(Host_ConsoleCreated);
+            Console.Pad.Host.ConsoleCreated +=Host_ConsoleCreated;
 		}
 
-		string currentFileName;
+		string _currentFileName;
 
         void Host_ConsoleCreated(object sender, EventArgs e)
         {
-            console.Pad.Console.ConsoleInitialized += new PythonConsoleControl.ConsoleInitializedEventHandler(Console_ConsoleInitialized);
+            Console.Pad.Console.ConsoleInitialized += Console_ConsoleInitialized;
         }
 
         void Console_ConsoleInitialized(object sender, EventArgs e)
         {
-            string startupScipt = "import IronPythonConsole";
-            ScriptSource scriptSource = console.Pad.Console.ScriptScope.Engine.CreateScriptSourceFromString(startupScipt, SourceCodeKind.Statements);
+            const string startupScipt = "import IronPythonConsole";
+            var scriptSource = Console.Pad.Console.ScriptScope.Engine.CreateScriptSourceFromString(startupScipt, SourceCodeKind.Statements);
             try
             {
                 scriptSource.Execute();
             }
-            catch {}
+            catch
+            {
+                // ignored
+            }
             //double[] test = new double[] { 1.2, 4.6 };
             //console.Pad.Console.ScriptScope.SetVariable("test", test);
         }
 
-        void MainWindow_Initialized(object sender, EventArgs e)
+        static void MainWindow_Initialized(object sender, EventArgs e)
         {
             //propertyGridComboBox.SelectedIndex = 1;
         }
 		
-		void openFileClick(object sender, RoutedEventArgs e)
-		{   
-            OpenFileDialog dlg = new OpenFileDialog();
-			dlg.CheckFileExists = true;
-			if (dlg.ShowDialog() ?? false) {
-				currentFileName = dlg.FileName;
-				textEditor.Load(currentFileName);
-				//textEditor.SyntaxHighlighting = HighlightingManager.Instance.GetDefinitionByExtension(Path.GetExtension(currentFileName));
-			}
+		void OpenFileClick(object sender, RoutedEventArgs e)
+		{
+		    var dlg = new OpenFileDialog {CheckFileExists = true};
+		    if (!(dlg.ShowDialog() ?? false)) return;
+
+		    _currentFileName = dlg.FileName;
+		    TextEditor.Load(_currentFileName);
+		    //textEditor.SyntaxHighlighting = HighlightingManager.Instance.GetDefinitionByExtension(Path.GetExtension(currentFileName));
 		}
 		
-		void saveFileClick(object sender, EventArgs e)
+		void SaveFileClick(object sender, EventArgs e)
 		{
-			if (currentFileName == null) {
-				SaveFileDialog dlg = new SaveFileDialog();
-				dlg.DefaultExt = ".txt";
-				if (dlg.ShowDialog() ?? false) {
-					currentFileName = dlg.FileName;
+			if (_currentFileName == null) {
+			    var dlg = new SaveFileDialog {DefaultExt = ".txt"};
+			    if (dlg.ShowDialog() ?? false) {
+					_currentFileName = dlg.FileName;
 				} else {
 					return;
 				}
 			}
-			textEditor.Save(currentFileName);
+			TextEditor.Save(_currentFileName);
 		}
 
-        void runClick(object sender, EventArgs e)
+        void RunClick(object sender, EventArgs e)
         {
             RunStatements();
         }
@@ -126,32 +109,31 @@ namespace IronPythonConsole
 
         void RunStatements()
         {
-            string statementsToRun = "";
-            if (textEditor.TextArea.Selection.Length > 0)
-                statementsToRun = textEditor.TextArea.Selection.GetText(textEditor.TextArea.Document);
-            else
-                statementsToRun = textEditor.TextArea.Document.Text;
-            console.Pad.Console.RunStatements(statementsToRun);
+            var statementsToRun = "";
+            statementsToRun = TextEditor.TextArea.Selection.Length > 0 ? 
+                TextEditor.TextArea.Selection.GetText(TextEditor.TextArea.Document) : 
+                TextEditor.TextArea.Document.Text;
+            Console.Pad.Console.RunStatements(statementsToRun);
         }
 		
-		void propertyGridComboBoxSelectionChanged(object sender, RoutedEventArgs e)
+		void PropertyGridComboBoxSelectionChanged(object sender, RoutedEventArgs e)
 		{
-            if (propertyGrid == null)
+            if (PropertyGrid == null)
 				return;
-			switch (propertyGridComboBox.SelectedIndex) {
+			switch (PropertyGridComboBox.SelectedIndex) {
 				case 0:
-                    propertyGrid.SelectedObject = consoleOptionsProvider; // not .Instance
+                    PropertyGrid.SelectedObject = _consoleOptionsProvider; // not .Instance
 					break;
 				case 1:
 					//propertyGrid.SelectedObject = textEditor.Options; (for WPF native control)
-                    propertyGrid.SelectedObject = textEditor.Options;
+                    PropertyGrid.SelectedObject = TextEditor.Options;
 					break;
 			}
 		}
 
         void expander_Expanded(object sender, RoutedEventArgs e)
         {
-            propertyGridComboBoxSelectionChanged(sender, e);
+            PropertyGridComboBoxSelectionChanged(sender, e);
         }
 		
     }

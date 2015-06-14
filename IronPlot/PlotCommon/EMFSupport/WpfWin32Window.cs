@@ -1,48 +1,37 @@
 ﻿using System;
 using System.Windows;
+using System.Windows.Forms;
 using System.Windows.Interop;
 using System.Windows.Media;
-using System.Diagnostics.CodeAnalysis;
+using IWin32Window = System.Windows.Forms.IWin32Window;
 
 namespace WpfToWmfClipboard
 {
     /// <summary>
     /// Helper class to pass a WPF Window object to Win32 methods
     /// </summary>
-    public sealed class Win32Wrapper : System.Windows.Forms.IWin32Window, System.Windows.Interop.IWin32Window
+    public sealed class Win32Wrapper : IWin32Window, System.Windows.Interop.IWin32Window
     {
-        private readonly Func<IntPtr> handleGetter;
+        private readonly Func<IntPtr> _handleGetter;
 
         public Win32Wrapper(Window window)
         {
             if (window == null)
                 throw new ArgumentNullException("window");
             var interop = new WindowInteropHelper(window);
-            handleGetter = () => interop.Handle;
+            _handleGetter = () => interop.Handle;
         }
 
-        public Win32Wrapper(System.Windows.Forms.Control control)
+        public Win32Wrapper(Control control)
         {
             if (control == null)
                 throw new ArgumentNullException("control");
-            handleGetter = () => control.Handle;
+            _handleGetter = () => control.Handle;
         }
 
-        IntPtr System.Windows.Forms.IWin32Window.Handle
-        {
-            get
-            {
-                return handleGetter();
-            }
-        }
+        IntPtr IWin32Window.Handle => _handleGetter();
 
-        IntPtr System.Windows.Interop.IWin32Window.Handle
-        {
-            get
-            {
-                return handleGetter();
-            }
-        }
+        IntPtr System.Windows.Interop.IWin32Window.Handle => _handleGetter();
     }
 
     public static class WpfWin32WindowHelper
@@ -59,14 +48,13 @@ namespace WpfToWmfClipboard
         {
             //Walk the visual tree to get the parent(ItemsControl) 
             //of this control
-            DependencyObject parent = startObject;
+            var parent = startObject;
             while (parent != null)
             {
-                T pt = parent as T;
+                var pt = parent as T;
                 if (pt != null)
                     return pt;
-                else
-                    parent = VisualTreeHelper.GetParent(parent);
+                parent = VisualTreeHelper.GetParent(parent);
             }
 
             return null;

@@ -12,7 +12,7 @@ namespace IronPlot.Plotting3D
     /// </summary>
     public class ServiceContainer : IServiceProvider
     {
-        Dictionary<Type, object> services = new Dictionary<Type, object>();
+        readonly Dictionary<Type, object> _services = new Dictionary<Type, object>();
 
 
         /// <summary>
@@ -20,7 +20,7 @@ namespace IronPlot.Plotting3D
         /// </summary>
         public void AddService<T>(T service)
         {
-            services.Add(typeof(T), service);
+            _services.Add(typeof(T), service);
         }
 
 
@@ -31,7 +31,7 @@ namespace IronPlot.Plotting3D
         {
             object service;
 
-            services.TryGetValue(serviceType, out service);
+            _services.TryGetValue(serviceType, out service);
 
             return service;
         }

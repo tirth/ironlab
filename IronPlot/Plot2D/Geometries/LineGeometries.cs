@@ -1,11 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Windows;
-using System.Windows.Controls;
+﻿using System.Windows;
 using System.Windows.Media;
-using System.Windows.Shapes;
 
 namespace IronPlot
 {
@@ -17,17 +11,17 @@ namespace IronPlot
             double[] tempY;
             if (graphToCanvas != null)
             {
-                tempX = curve.xTransformed.MultiplyBy(graphToCanvas.Matrix.M11).SumWith(graphToCanvas.Matrix.OffsetX);
-                tempY = curve.yTransformed.MultiplyBy(graphToCanvas.Matrix.M22).SumWith(graphToCanvas.Matrix.OffsetY);
+                tempX = curve.XTransformed.MultiplyBy(graphToCanvas.Matrix.M11).SumWith(graphToCanvas.Matrix.OffsetX);
+                tempY = curve.YTransformed.MultiplyBy(graphToCanvas.Matrix.M22).SumWith(graphToCanvas.Matrix.OffsetY);
             }
             else
             {
-                tempX = curve.xTransformed; tempY = curve.yTransformed;
+                tempX = curve.XTransformed; tempY = curve.YTransformed;
             }
-            StreamGeometry streamGeometry = new StreamGeometry();
-            StreamGeometryContext context = streamGeometry.Open();
-            int lines = 0;
-            for (int i = 0; i < curve.x.Length; ++i)
+            var streamGeometry = new StreamGeometry();
+            var context = streamGeometry.Open();
+            var lines = 0;
+            for (var i = 0; i < curve.x.Length; ++i)
             {
                 if (i == 0)
                 {
@@ -35,7 +29,7 @@ namespace IronPlot
                 }
                 else
                 {
-                    if (curve.includeLinePoint[i])
+                    if (curve.IncludeLinePoint[i])
                     {
                         context.LineTo(new Point(tempX[i], tempY[i]), true, false);
                         lines++;
@@ -62,19 +56,19 @@ namespace IronPlot
                 yScale = 1; yOffset = 0;
             }
 
-            PathGeometry pathGeometry = new PathGeometry();
-            PathFigure pathFigure = new PathFigure();
+            var pathGeometry = new PathGeometry();
+            var pathFigure = new PathFigure();
             LineSegment lineSegment;
-            double xCanvas = curve.xTransformed[0] * xScale + xOffset;
-            double yCanvas = curve.yTransformed[0] * yScale + yOffset;
+            var xCanvas = curve.XTransformed[0] * xScale + xOffset;
+            var yCanvas = curve.YTransformed[0] * yScale + yOffset;
             pathFigure.StartPoint = new Point(xCanvas, yCanvas);
-            for (int i = 1; i < curve.x.Length; ++i)
+            for (var i = 1; i < curve.x.Length; ++i)
             {
-                if (curve.includeLinePoint[i])
+                if (curve.IncludeLinePoint[i])
                 {
                     lineSegment = new LineSegment();
-                    xCanvas = curve.xTransformed[i] * xScale + xOffset;
-                    yCanvas = curve.yTransformed[i] * yScale + yOffset;
+                    xCanvas = curve.XTransformed[i] * xScale + xOffset;
+                    yCanvas = curve.YTransformed[i] * yScale + yOffset;
                     lineSegment.Point = new Point(xCanvas, yCanvas);
                     pathFigure.Segments.Add(lineSegment);
                 }

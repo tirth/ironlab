@@ -1,21 +1,9 @@
 ﻿// Copyright (c) 2010 Joe Moorhouse
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
-using System.Collections.Specialized;
-using System.Collections;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.Linq;
+using System.Windows;
 
 namespace IronPlot
 {
@@ -23,12 +11,12 @@ namespace IronPlot
     {
         internal UniqueObservableCollection<Plot2DItem> plotItems;
 
-        public Collection<Plot2DItem> PlotItems { get { return plotItems; } }
+        public Collection<Plot2DItem> PlotItems => plotItems;
 
         protected void InitialiseChildenCollection()
         {
             plotItems = new UniqueObservableCollection<Plot2DItem>();
-            plotItems.CollectionChanged += new NotifyCollectionChangedEventHandler(plotItems_CollectionChanged);
+            plotItems.CollectionChanged += plotItems_CollectionChanged;
         }
 
         protected void plotItems_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
@@ -48,23 +36,23 @@ namespace IronPlot
                 }
             }
             var allAxes = Axes.XAxes.Concat(Axes.YAxes);
-            foreach (Axis2D axis in allAxes)
+            foreach (var axis in allAxes)
             {
-                Range axisRange = GetRangeFromChildren(axis);
+                var axisRange = GetRangeFromChildren(axis);
                 if (axisRange.Length != 0) axis.SetValue(Axis2D.RangeProperty, axisRange);
             }
         }
 
         protected Range GetRangeFromChildren(Axis2D axis)
         {
-            Range range = new Range(0, 0);
+            var range = new Range(0, 0);
             Plot2DItem child;
-            bool rangeUpdated = false;
-            for (int i = 0; i < plotItems.Count; ++i)
+            var rangeUpdated = false;
+            for (var i = 0; i < plotItems.Count; ++i)
             {
                 child = plotItems[i];
                 if ((child.XAxis != axis) && (child.YAxis != axis)) continue;
-                Rect bounds = child.PaddedBounds;
+                var bounds = child.PaddedBounds;
                 if (rangeUpdated == false)
                 {
                     range = (axis is XAxis) ? new Range(bounds.Left, bounds.Right) : new Range(bounds.Top, bounds.Bottom);
@@ -77,9 +65,9 @@ namespace IronPlot
 
         protected Rect GetBoundsFromChildren()
         {
-            Rect bounds = new Rect(new Size(10, 10)); // default if there are no children.
+            var bounds = new Rect(new Size(10, 10)); // default if there are no children.
             Plot2DItem child;
-            for (int i = 0; i < plotItems.Count; ++i)
+            for (var i = 0; i < plotItems.Count; ++i)
             {
                 child = plotItems[i];
                 if (i == 0) bounds = child.PaddedBounds;

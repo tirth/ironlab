@@ -11,7 +11,7 @@
 	Copyright (c) 2010 Joe Moorhouse
     -->
     <UserControl.Resources>
-        <ControlTemplate x:Key="colourBarVerticalSlider" TargetType="{x:Type Slider}">
+        <ControlTemplate x:Key="ColourBarVerticalSlider" TargetType="{x:Type Slider}">
             <Border SnapsToDevicePixels="true"
             BorderBrush="{TemplateBinding BorderBrush}"
             BorderThickness="{TemplateBinding BorderThickness}">
@@ -39,7 +39,7 @@
                 </Grid>
             </Border>
         </ControlTemplate>
-        <Style TargetType="Thumb" x:Key="colourBarThumb">
+        <Style TargetType="Thumb" x:Key="ColourBarThumb">
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Thumb">
@@ -51,8 +51,7 @@
             <Setter Property="Height" Value="20"/>
         </Style>
     </UserControl.Resources>
-    <Grid Name="grid">
-    </Grid>
+    <Grid Name="Grid" />
 </UserControl>
 
     

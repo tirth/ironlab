@@ -1,6 +1,5 @@
 ﻿// Copyright (c) 2010 Joe Moorhouse
 
-using System;
 using System.IO;
 using System.Text;
 
@@ -8,32 +7,20 @@ namespace PythonConsoleControl
 {
     public class PythonOutputStream : Stream
     {
-        PythonTextEditor textEditor;
+        readonly PythonTextEditor _textEditor;
 
         public PythonOutputStream(PythonTextEditor textEditor)
         {
-            this.textEditor = textEditor;
+            _textEditor = textEditor;
         }
 
-        public override bool CanRead
-        {
-            get { return false; }
-        }
+        public override bool CanRead => false;
 
-        public override bool CanSeek
-        {
-            get { return false; }
-        }
+        public override bool CanSeek => false;
 
-        public override bool CanWrite
-        {
-            get { return true; }
-        }
+        public override bool CanWrite => true;
 
-        public override long Length
-        {
-            get { return 0; }
-        }
+        public override long Length => 0;
 
         public override long Position
         {
@@ -64,8 +51,8 @@ namespace PythonConsoleControl
         /// </summary>
         public override void Write(byte[] buffer, int offset, int count)
         {
-            string text = UTF8Encoding.UTF8.GetString(buffer, offset, count);
-            textEditor.Write(text);
+            var text = Encoding.UTF8.GetString(buffer, offset, count);
+            _textEditor.Write(text);
         }
     }
 }

@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Drawing;
+using System.Windows.Threading;
 using SharpDX;
 using SharpDX.Direct2D1;
 
@@ -10,18 +8,17 @@ namespace IronPlot
 {
     public class Direct2DImage : DirectImage
     {
-        internal List<DirectPath> paths;
+        internal List<DirectPath> Paths;
 
-        System.Windows.Threading.DispatcherTimer timer = new System.Windows.Threading.DispatcherTimer(); 
+        readonly DispatcherTimer _timer = new DispatcherTimer(); 
 
         public Direct2DImage()
-            : base()
         {
             CreateDevice(SurfaceType.Direct2D);
-            paths = new List<DirectPath>();
-            timer.Interval = TimeSpan.FromSeconds(0.1);
-            timer.Tick += new EventHandler(timer_Tick);
-            timer.Start();
+            Paths = new List<DirectPath>();
+            _timer.Interval = TimeSpan.FromSeconds(0.1);
+            _timer.Tick += timer_Tick;
+            _timer.Start();
         }
 
         void timer_Tick(object sender, EventArgs e)
@@ -41,13 +38,12 @@ namespace IronPlot
         {
             RenderTarget.BeginDraw();
             RenderTarget.Transform = Matrix3x2.Identity;
-            Random random = new Random();
+            var random = new Random();
             RenderTarget.Clear(new Color4(0.5f, 0.5f, 0.5f, 0.0f));
             RenderTarget.AntialiasMode = AntialiasMode.Aliased;
-            StrokeStyleProperties properties = new StrokeStyleProperties();
-            properties.LineJoin = LineJoin.MiterOrBevel;
-            StrokeStyle strokeStyle = new StrokeStyle(RenderTarget.Factory, properties);
-            foreach (DirectPath path in paths)
+            var properties = new StrokeStyleProperties {LineJoin = LineJoin.MiterOrBevel};
+            var strokeStyle = new StrokeStyle(RenderTarget.Factory, properties);
+            foreach (var path in Paths)
             {
                 if (path.Geometry != null && path.Brush != null)
                 {
@@ -65,8 +61,8 @@ namespace IronPlot
                 }
             }
             RenderTarget.EndDraw();
-            graphicsDeviceService10.CopyTextureAcross();
-            graphicsDeviceService10.Device.Flush();
+            GraphicsDeviceService10.CopyTextureAcross();
+            GraphicsDeviceService10.Device.Flush();
         }
     }
 }

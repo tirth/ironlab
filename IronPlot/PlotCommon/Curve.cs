@@ -3,7 +3,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Windows;
 using System.Windows.Media;
 
@@ -14,29 +13,23 @@ namespace IronPlot
     public partial class Curve
     {
         internal double[] x, y;
-        internal double[] xTransformed, yTransformed;
+        internal double[] XTransformed, YTransformed;
         internal SortedValues SortedValues;
         internal double[] TransformedSorted;
         internal int[] SortedToUnsorted;
 
-        internal bool[] includeLinePoint; // Whether or not to include the point in the line Geometry.
-        internal bool[] includeMarker; // Whether or not to include the marker in the Geometry.
-        protected byte[] pointRegion;
-        protected int n;
+        internal bool[] IncludeLinePoint; // Whether or not to include the point in the line Geometry.
+        internal bool[] IncludeMarker; // Whether or not to include the marker in the Geometry.
+        protected byte[] PointRegion;
+        protected int N;
 
-        protected Matrix cachedTransform = Matrix.Identity;
-        protected Rect cachedRegion = new Rect(0, 0, 0, 0);
+        protected Matrix CachedTransform = Matrix.Identity;
+        protected Rect CachedRegion = new Rect(0, 0, 0, 0);
 
-        public double[] X
-        {
-            get { return x; }
-        }
-        
-        public double[] Y
-        {
-            get { return y; }
-        }
-        
+        public double[] X => x;
+
+        public double[] Y => y;
+
         public Curve(double[] x, double[] y)
         {
             this.x = x; this.y = y;
@@ -48,10 +41,10 @@ namespace IronPlot
 
         public Curve(IEnumerable<double> x, IEnumerable<double> y)
         {
-            int count = Math.Min(x.Count(), y.Count());
+            var count = Math.Min(x.Count(), y.Count());
             this.x = new double[count];
             this.y = new double[count];
-            for (int i = 0; i < count; ++i)
+            for (var i = 0; i < count; ++i)
             {
                 this.x[i] = x.ElementAt(i);
                 this.y[i] = y.ElementAt(i);
@@ -63,19 +56,19 @@ namespace IronPlot
 
         public Rect Bounds()
         {
-            return new Rect(new Point(xTransformed.Min(), yTransformed.Min()), new Point(xTransformed.Max(), yTransformed.Max()));
+            return new Rect(new Point(XTransformed.Min(), YTransformed.Min()), new Point(XTransformed.Max(), YTransformed.Max()));
         }
 
         private void PrepareLineData(int length)
         {
-            n = length;
-            includeLinePoint = new bool[length];
-            includeMarker = new bool[length];
-            pointRegion = new byte[length];
-            for (int i = 0; i < length; ++i)
+            N = length;
+            IncludeLinePoint = new bool[length];
+            IncludeMarker = new bool[length];
+            PointRegion = new byte[length];
+            for (var i = 0; i < length; ++i)
             {
-                includeLinePoint[i] = true;
-                includeMarker[i] = true;
+                IncludeLinePoint[i] = true;
+                IncludeMarker[i] = true;
             }
         }
 
@@ -84,27 +77,27 @@ namespace IronPlot
         /// </summary>
         private void DetermineSorted()
         {
-            SortedToUnsorted = Enumerable.Range(0, xTransformed.Length).ToArray();
-            if (IsSorted(xTransformed))
+            SortedToUnsorted = Enumerable.Range(0, XTransformed.Length).ToArray();
+            if (IsSorted(XTransformed))
             {
-                TransformedSorted = xTransformed;
+                TransformedSorted = XTransformed;
                 SortedValues = SortedValues.X;
             }
-            else if (IsSorted(yTransformed))
+            else if (IsSorted(YTransformed))
             {
-                TransformedSorted = yTransformed;
+                TransformedSorted = YTransformed;
                 SortedValues = SortedValues.Y;
             }
             else
             {
-                TransformedSorted = (double[])xTransformed.Clone();
+                TransformedSorted = (double[])XTransformed.Clone();
                 Array.Sort(TransformedSorted, SortedToUnsorted);
             }
         }
 
         private bool IsSorted(double[] array)
         {
-            for (int i = 1; i < array.Length - 1; ++i)
+            for (var i = 1; i < array.Length - 1; ++i)
             {
                 if (array[i] < array[i - 1]) return false;
             }
@@ -123,62 +116,62 @@ namespace IronPlot
         {
             if (graphTransformX == null)
             {
-                xTransformed = x;
+                XTransformed = x;
             }
             else
             {
-                int length = x.Length;
-                xTransformed = new double[length];
-                for (int i = 0; i < length; ++i) xTransformed[i] = graphTransformX(x[i]);
+                var length = x.Length;
+                XTransformed = new double[length];
+                for (var i = 0; i < length; ++i) XTransformed[i] = graphTransformX(x[i]);
             }
             if (graphTransformY == null)
             {
-                yTransformed = y;
+                YTransformed = y;
             }
             else
             {
-                int length = y.Length;
-                yTransformed = new double[length];
-                for (int i = 0; i < length; ++i) yTransformed[i] = graphTransformY(y[i]);
+                var length = y.Length;
+                YTransformed = new double[length];
+                for (var i = 0; i < length; ++i) YTransformed[i] = graphTransformY(y[i]);
             }
             DetermineSorted();
         }
 
         public void FilterMinMax(MatrixTransform canvasToGraph, Rect viewBounds)
         {
-            if (xTransformed.Length <= 2) return;
+            if (XTransformed.Length <= 2) return;
             // We do not need to re-evaluate the set of lines if the view is contained by the cached region
             // and the size of the region is not significantly changed.
-            double width = Math.Max(viewBounds.Width, canvasToGraph.Matrix.M11 * 500);
-            double height = Math.Max(viewBounds.Height, canvasToGraph.Matrix.M22 * 500);
-            double xViewMin = viewBounds.Left - width / 2;
-            double xViewMax = viewBounds.Right + width / 2;
-            double yViewMin = viewBounds.Top - height / 2;
-            double yViewMax = viewBounds.Bottom + height / 2;
-            double widthRatio = canvasToGraph.Matrix.M11 /cachedTransform.M11; 
-            double heightRatio = canvasToGraph.Matrix.M22 /cachedTransform.M22; 
-            if (ContainsRegion(cachedRegion, viewBounds) && (widthRatio > 0.9) && (widthRatio < 1.1)
+            var width = Math.Max(viewBounds.Width, canvasToGraph.Matrix.M11 * 500);
+            var height = Math.Max(viewBounds.Height, canvasToGraph.Matrix.M22 * 500);
+            var xViewMin = viewBounds.Left - width / 2;
+            var xViewMax = viewBounds.Right + width / 2;
+            var yViewMin = viewBounds.Top - height / 2;
+            var yViewMax = viewBounds.Bottom + height / 2;
+            var widthRatio = canvasToGraph.Matrix.M11 /CachedTransform.M11; 
+            var heightRatio = canvasToGraph.Matrix.M22 /CachedTransform.M22; 
+            if (ContainsRegion(CachedRegion, viewBounds) && (widthRatio > 0.9) && (widthRatio < 1.1)
                 && (heightRatio > 0.9) && (heightRatio < 1.1)) return;
-            cachedRegion = new Rect(new Point(xViewMin, yViewMin), new Point(xViewMax, yViewMax));
-            cachedTransform.M11 = canvasToGraph.Matrix.M11;
-            cachedTransform.M22 = canvasToGraph.Matrix.M22;
+            CachedRegion = new Rect(new Point(xViewMin, yViewMin), new Point(xViewMax, yViewMax));
+            CachedTransform.M11 = canvasToGraph.Matrix.M11;
+            CachedTransform.M22 = canvasToGraph.Matrix.M22;
 
             // Exclude all line points by default: these will subsequently be added as necessary.
             // Include those marker points that are in the cached region and make note of region.
-            int nPoints = includeLinePoint.Length;
-            for (int j = 0; j < nPoints; ++j)
+            var nPoints = IncludeLinePoint.Length;
+            for (var j = 0; j < nPoints; ++j)
             {
-                includeLinePoint[j] = false;
-                includeMarker[j] = false;
-                double newX = xTransformed[j]; double newY = yTransformed[j];
-                if (newX < xViewMin) pointRegion[j] = 1;
-                else if (newX > xViewMax) pointRegion[j] = 2;
-                else if (newY < yViewMin) pointRegion[j] = 4;
-                else if (newY > yViewMax) pointRegion[j] = 8;
+                IncludeLinePoint[j] = false;
+                IncludeMarker[j] = false;
+                var newX = XTransformed[j]; var newY = YTransformed[j];
+                if (newX < xViewMin) PointRegion[j] = 1;
+                else if (newX > xViewMax) PointRegion[j] = 2;
+                else if (newY < yViewMin) PointRegion[j] = 4;
+                else if (newY > yViewMax) PointRegion[j] = 8;
                 else
                 {
-                    pointRegion[j] = 0;
-                    includeMarker[j] = true;
+                    PointRegion[j] = 0;
+                    IncludeMarker[j] = true;
                 }
             }
             double xStart, yStart;
@@ -186,15 +179,15 @@ namespace IronPlot
             double xMax2, xMin2, yMax2, yMin2;
             int xMaxIndex, xMinIndex, yMaxIndex, yMinIndex;
             bool withinXBound, withinYBound;
-            double deltaX = Math.Abs(canvasToGraph.Matrix.M11) * 0.25; 
-            double deltaY = Math.Abs(canvasToGraph.Matrix.M22) * 0.25;
-            double deltaX2 = Math.Abs(canvasToGraph.Matrix.M11) * 0.75;
-            double deltaY2 = Math.Abs(canvasToGraph.Matrix.M22) * 0.75;
-            int i = 0;
-            byte region = pointRegion[i]; byte newRegion;
+            var deltaX = Math.Abs(canvasToGraph.Matrix.M11) * 0.25; 
+            var deltaY = Math.Abs(canvasToGraph.Matrix.M22) * 0.25;
+            var deltaX2 = Math.Abs(canvasToGraph.Matrix.M11) * 0.75;
+            var deltaY2 = Math.Abs(canvasToGraph.Matrix.M22) * 0.75;
+            var i = 0;
+            var region = PointRegion[i]; byte newRegion;
             while (true)
             {
-                newRegion = pointRegion[i + 1];
+                newRegion = PointRegion[i + 1];
                 // If the current point is outside the cached region, and the next point is in the same region, then we start to exclude points.
                 if ((region > 0) && (region == newRegion))
                 {
@@ -202,21 +195,21 @@ namespace IronPlot
                     while ((region == newRegion) && (i < nPoints - 2))
                     {
                         ++i;
-                        newRegion = pointRegion[i + 1];
+                        newRegion = PointRegion[i + 1];
                     }
                     // This is the penultimate point and both this and the last point should be excluded:
                     if (region == newRegion) break;
                     // Otherwise we need to include both this and the next point.
-                    includeLinePoint[i] = true;
-                    includeLinePoint[i + 1] = true;
+                    IncludeLinePoint[i] = true;
+                    IncludeLinePoint[i + 1] = true;
                     ++i;
                 }
                 else
                 {
-                    includeLinePoint[i] = true;
+                    IncludeLinePoint[i] = true;
                 }
                 // Now do max-min filtration
-                xStart = xTransformed[i]; yStart = yTransformed[i];
+                xStart = XTransformed[i]; yStart = YTransformed[i];
                 ++i;
                 if (i == nPoints) break;
                 xMax = xStart + deltaX; xMin = xStart - deltaX;
@@ -228,7 +221,7 @@ namespace IronPlot
                 // Do max-min filtration:
                 while (true)
                 {
-                    double newX = xTransformed[i]; double newY = yTransformed[i];
+                    var newX = XTransformed[i]; var newY = YTransformed[i];
                     if (newX > xMax)
                     {
                         xMax = newX;
@@ -238,8 +231,8 @@ namespace IronPlot
                             withinXBound = false;
                             if (!withinYBound)
                             {
-                                if (yMaxIndex > -1) includeLinePoint[yMaxIndex] = true;
-                                if (yMinIndex > -1) includeLinePoint[yMinIndex] = true;
+                                if (yMaxIndex > -1) IncludeLinePoint[yMaxIndex] = true;
+                                if (yMinIndex > -1) IncludeLinePoint[yMinIndex] = true;
                                 break;
                             }
                         }
@@ -253,8 +246,8 @@ namespace IronPlot
                             withinXBound = false;
                             if (!withinYBound)
                             {
-                                if (yMaxIndex > -1) includeLinePoint[yMaxIndex] = true;
-                                if (yMinIndex > -1) includeLinePoint[yMinIndex] = true;
+                                if (yMaxIndex > -1) IncludeLinePoint[yMaxIndex] = true;
+                                if (yMinIndex > -1) IncludeLinePoint[yMinIndex] = true;
                                 break;
                             }
                         }
@@ -268,8 +261,8 @@ namespace IronPlot
                             withinYBound = false;
                             if (!withinXBound)
                             {
-                                if (xMaxIndex > -1) includeLinePoint[xMaxIndex] = true;
-                                if (xMinIndex > -1) includeLinePoint[xMinIndex] = true;
+                                if (xMaxIndex > -1) IncludeLinePoint[xMaxIndex] = true;
+                                if (xMinIndex > -1) IncludeLinePoint[xMinIndex] = true;
                                 break;
                             }
                         }
@@ -283,8 +276,8 @@ namespace IronPlot
                             withinYBound = false;
                             if (!withinXBound)
                             {
-                                if (xMaxIndex > -1) includeLinePoint[xMaxIndex] = true;
-                                if (xMinIndex > -1) includeLinePoint[xMinIndex] = true;
+                                if (xMaxIndex > -1) IncludeLinePoint[xMaxIndex] = true;
+                                if (xMinIndex > -1) IncludeLinePoint[xMinIndex] = true;
                                 break;
                             }
                         }
@@ -292,22 +285,22 @@ namespace IronPlot
                     if (i == (nPoints - 1)) break;
                     ++i;
                 }
-                includeLinePoint[i] = true;
-                includeLinePoint[i - 1] = true;
+                IncludeLinePoint[i] = true;
+                IncludeLinePoint[i - 1] = true;
                 if (i == (nPoints - 1)) break;
-                region = pointRegion[i];
+                region = PointRegion[i];
             }
-            int included = 0;
-            for (int j = 0; j < includeLinePoint.Length; ++j)
+            var included = 0;
+            for (var j = 0; j < IncludeLinePoint.Length; ++j)
             {
-                if (includeLinePoint[j] == true) ++included;
+                if (IncludeLinePoint[j]) ++included;
             }
 
         }
 
         protected bool ContainsRegion(Rect container, Rect contained)
         {
-            bool contains = true;
+            var contains = true;
             contains = (contained.Left >= container.Left) && (contained.Right <= container.Right)
                 && (contained.Top >= container.Top) && (contained.Bottom <= container.Bottom);
             return contains;
@@ -315,35 +308,35 @@ namespace IronPlot
 
         public void FilterLinInterp(MatrixTransform canvasToGraph)
         {
-            for (int j = 0; j < includeLinePoint.Length; ++j)
+            for (var j = 0; j < IncludeLinePoint.Length; ++j)
             {
-                includeLinePoint[j] = true;
+                IncludeLinePoint[j] = true;
             }
             double x1, y1, x2, y2, x3, y3;
-            int i = 0;
-            int nExcluded = 0;
-            bool newlyExcluded = true;
+            var i = 0;
+            var nExcluded = 0;
+            var newlyExcluded = true;
             x1 = x[0]; y1 = y[0];
-            int toPotentiallyExclude = 0;
-            double cutOffX = Math.Abs(canvasToGraph.Matrix.M11);
-            double cutOffY = Math.Abs(canvasToGraph.Matrix.M22);
-            while ((nExcluded < (this.X.Length - 100)) && newlyExcluded)
+            var toPotentiallyExclude = 0;
+            var cutOffX = Math.Abs(canvasToGraph.Matrix.M11);
+            var cutOffY = Math.Abs(canvasToGraph.Matrix.M22);
+            while ((nExcluded < (X.Length - 100)) && newlyExcluded)
             {
                 newlyExcluded = false;
                 i = 0; x1 = x[0]; y1 = y[0];
-                while (i < (this.X.Length - 4))
+                while (i < (X.Length - 4))
                 {
                     ++i; // Find new point to potentially miss out
-                    while (!includeLinePoint[i])
+                    while (!IncludeLinePoint[i])
                     {
                         i += 1;
                     }
                     toPotentiallyExclude = i;
-                    if (i > this.X.Length - 4) break;  
+                    if (i > X.Length - 4) break;  
                     x2 = x[i];
                     y2 = y[i];
                     ++i; // Find new point to draw line to
-                    while (!includeLinePoint[i])
+                    while (!IncludeLinePoint[i])
                     {
                         i += 1;
                     }
@@ -352,7 +345,7 @@ namespace IronPlot
                     if (((Math.Abs(x2 - x1) < cutOffX) || (Math.Abs(x3 - x2) < cutOffX)) ||
                         (Math.Abs((y1 + (x2 - x1) * (y3 - y1) / (x3 - x1) - y2)) < cutOffY))
                     {
-                        includeLinePoint[toPotentiallyExclude] = false;
+                        IncludeLinePoint[toPotentiallyExclude] = false;
                         newlyExcluded = true;
                         nExcluded += 1;
                         x1 = x3; y1 = y3;
@@ -363,8 +356,8 @@ namespace IronPlot
                     }
                 }
             }
-            int totalExcluded = nExcluded;
-            int remaining = this.X.Length - nExcluded;
+            var totalExcluded = nExcluded;
+            var remaining = X.Length - nExcluded;
         }
 
     }

@@ -1,13 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Windows.Input;
-using System.Collections.ObjectModel;
+﻿using System.Diagnostics;
 using System.Windows.Controls;
-using System.Windows;
-using System.Diagnostics;
-using DataGrid = IronPlot.DataGrid;
+using System.Windows.Input;
 
 namespace IronPlot
 {
@@ -18,8 +11,8 @@ namespace IronPlot
             CommandManager.RegisterClassCommandBinding(
                 typeof(DataGrid),
                 new CommandBinding(ApplicationCommands.Paste,
-                    new ExecutedRoutedEventHandler(OnExecutedPaste),
-                    new CanExecuteRoutedEventHandler(OnCanExecutePaste)));
+                    OnExecutedPaste,
+                    OnCanExecutePaste));
         }
 
         #region Clipboard Paste
@@ -53,22 +46,22 @@ namespace IronPlot
             Debug.WriteLine("OnExecutedPaste begin");
 
             // parse the clipboard data             
-            List<string[]> rowData = ClipboardHelper.ParseClipboardData();
+            var rowData = ClipboardHelper.ParseClipboardData();
 
             // call OnPastingCellClipboardContent for each cell 
             //int nSelectedCells = 
-            int minRowIndex = Items.IndexOf(CurrentItem);
-            int maxRowIndex = Items.Count - 1;
-            int minColumnDisplayIndex = (SelectionUnit != DataGridSelectionUnit.FullRow) ? Columns.IndexOf(CurrentColumn) : 0;
-            int maxColumnDisplayIndex = Columns.Count - 1;
+            var minRowIndex = Items.IndexOf(CurrentItem);
+            var maxRowIndex = Items.Count - 1;
+            var minColumnDisplayIndex = (SelectionUnit != DataGridSelectionUnit.FullRow) ? Columns.IndexOf(CurrentColumn) : 0;
+            var maxColumnDisplayIndex = Columns.Count - 1;
             if (SelectedCells.Count > 1) GetSelectionBounds(ref minRowIndex, ref maxRowIndex, ref minColumnDisplayIndex, ref maxColumnDisplayIndex);
-            int rowDataIndex = 0;
-            for (int i = minRowIndex; i <= maxRowIndex && rowDataIndex < rowData.Count; i++, rowDataIndex++)
+            var rowDataIndex = 0;
+            for (var i = minRowIndex; i <= maxRowIndex && rowDataIndex < rowData.Count; i++, rowDataIndex++)
             {
-                int columnDataIndex = 0;
-                for (int j = minColumnDisplayIndex; j <= maxColumnDisplayIndex && columnDataIndex < rowData[rowDataIndex].Length; j++, columnDataIndex++)
+                var columnDataIndex = 0;
+                for (var j = minColumnDisplayIndex; j <= maxColumnDisplayIndex && columnDataIndex < rowData[rowDataIndex].Length; j++, columnDataIndex++)
                 {
-                    DataGridColumn column = ColumnFromDisplayIndex(j);
+                    var column = ColumnFromDisplayIndex(j);
                     column.OnPastingCellClipboardContent(Items[i], rowData[rowDataIndex][columnDataIndex]);
                 }
             }
@@ -76,11 +69,10 @@ namespace IronPlot
 
         private void GetSelectionBounds(ref int minRow, ref int maxRow, ref int minColumn, ref int maxColumn)
         {
-            int row, column;
-            foreach (DataGridCellInfo cell in SelectedCells)
+            foreach (var cell in SelectedCells)
             {
-                row = Items.IndexOf(cell.Item);
-                column = Columns.IndexOf(cell.Column);
+                var row = Items.IndexOf(cell.Item);
+                var column = Columns.IndexOf(cell.Column);
                 if (row < minRow) minRow = row;
                 if (row > maxRow) maxRow = row;
                 if (column < minColumn) minColumn = column;

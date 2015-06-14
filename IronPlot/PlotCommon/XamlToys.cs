@@ -2,18 +2,16 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using d = System.Drawing;
-using d2 = System.Drawing.Drawing2D;
-using di = System.Drawing.Imaging;
+using System.Globalization;
 using System.IO;
-using System.Reflection;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Markup;
 using System.Windows.Media;
 using System.Windows.Media.Converters;
 using System.Windows.Media.Imaging;
-using System.Xml;
+using d = System.Drawing;
+using d2 = System.Drawing.Drawing2D;
+using di = System.Drawing.Imaging;
 
 namespace BCDev.XamlToys {
 	public static class Utility {
@@ -59,8 +57,8 @@ namespace BCDev.XamlToys {
 		public static d.Graphics CreateEmf(string fileName, Rect bounds) {
 			if (bounds.Width == 0 || bounds.Height == 0) bounds = new Rect(0, 0, 1, 1);
 			if (File.Exists(fileName)) File.Delete(fileName);
-			using (d.Graphics refDC = d.Graphics.FromImage(new d.Bitmap(1, 1)))
-				return d.Graphics.FromImage(new di.Metafile(File.Create(fileName), refDC.GetHdc(), 
+			using (var refDc = d.Graphics.FromImage(new d.Bitmap(1, 1)))
+				return d.Graphics.FromImage(new di.Metafile(File.Create(fileName), refDc.GetHdc(), 
 				   bounds.ToGdiPlus(), di.MetafileFrameUnit.Pixel, di.EmfType.EmfPlusDual));
 		}
 
@@ -181,7 +179,7 @@ namespace BCDev.XamlToys {
 		internal static bool IsZero(double d) { return Math.Abs(d) < 2e-05; }
 
         internal static void Warning(string message, params object[] args) {
-            Trace.WriteLine(string.Format(System.Globalization.CultureInfo.InvariantCulture, message, args));
+            Trace.WriteLine(string.Format(CultureInfo.InvariantCulture, message, args));
         }
 #endregion
 	}
@@ -232,7 +230,7 @@ namespace BCDev.XamlToys {
 				if (intersects)
 					Utility.Warning("DrawingGroup.Opacity creates translucency between overlapping children");
 			}
-            foreach (Drawing d in drawing.Children) d.RenderTo(graphics, opacity * drawing.Opacity);
+            foreach (var d in drawing.Children) d.RenderTo(graphics, opacity * drawing.Opacity);
             graphics.EndContainer(gc);
             if (drawing.OpacityMask != null) Utility.Warning("DrawingGroup OpacityMask ignored.");
             if (drawing.BitmapEffect != null) Utility.Warning("DrawingGroup BitmapEffect ignored.");
@@ -483,7 +481,7 @@ namespace BCDev.XamlToys {
 
 			var cb = new d2.ColorBlend(g.Count);
 			var invert = brush is RadialGradientBrush;
-			for(int i = 0; i < g.Count; ++i) {
+			for(var i = 0; i < g.Count; ++i) {
 				cb.Positions[i] = (float)(invert ? (1 - g[i].Offset) : g[i].Offset);
 				cb.Colors[i] = g[i].Color.ToGdiPlus(brush.Opacity);
 			}
@@ -648,13 +646,14 @@ namespace BCDev.XamlToys {
 			return path;
 		}
 
-		public static d2.FillMode ToGdiPlus(this FillRule me) {
-			if (me == FillRule.EvenOdd)
+		public static d2.FillMode ToGdiPlus(this FillRule me)
+		{
+		    if (me == FillRule.EvenOdd)
 				return d2.FillMode.Alternate;
-			else
-				return d2.FillMode.Winding;
+		    return d2.FillMode.Winding;
 		}
-#endregion
+
+	    #endregion
 	}
 
 	public static class SegmentExtensions {
@@ -699,7 +698,7 @@ namespace BCDev.XamlToys {
 			return lastPoint;
 		}
 		static d.PointF AddToPath(this PolyLineSegment segment, d.PointF startPoint, d2.GraphicsPath path) {
-			d.PointF[] points = new d.PointF[segment.Points.Count + 1];
+			var points = new d.PointF[segment.Points.Count + 1];
 			var i = 0;
 			points[i++] = startPoint;
 			foreach(var p in segment.Points) points[i++] = p.ToGdiPlus();
@@ -765,7 +764,7 @@ namespace BCDev.XamlToys {
 			if (!(pf.Segments[0] is LineSegment))
                 throw new InvalidOperationException("Geometry.Combine didn't start with a line");
 			var lastPoint = startPoint;
-			for(int i = 1; i < pf.Segments.Count; ++i) {
+			for(var i = 1; i < pf.Segments.Count; ++i) {
 				if (pf.Segments[i] is ArcSegment)
                     throw new InvalidOperationException("Geometry.Combine produced an ArcSegment - oops, bad hack");
 				lastPoint = pf.Segments[i].AddToPath(lastPoint, path);

@@ -21,14 +21,9 @@
 //---------------------------------------------------------------------------
 
 using System;
-using System.Diagnostics;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media.Media3D;
-using System.Windows.Markup;
-using Point = System.Windows.Point;
-using Mouse = System.Windows.Input.Mouse;
-using Quaternion = System.Windows.Media.Media3D.Quaternion;
 
 namespace IronPlot.Plotting3D
 {
@@ -71,19 +66,19 @@ namespace IronPlot.Plotting3D
     public class Trackball : DependencyObject
     {
         protected FrameworkElement _eventSource;
-        protected Point _previousPosition2D;
-        protected Vector3D _previousPosition3D = new Vector3D(0, 0, 1);
+        protected Point PreviousPosition2D;
+        protected Vector3D PreviousPosition3D = new Vector3D(0, 0, 1);
 
         protected Transform3DGroup _transform;
         protected ScaleTransform3D _scale = new ScaleTransform3D();
         protected AxisAngleRotation3D _rotation = new AxisAngleRotation3D();
         protected TranslateTransform3D _translate = new TranslateTransform3D();
 
-        protected bool _mouseLeftDown, _mouseRightDown;
+        protected bool MouseLeftDown, MouseRightDown;
         
-        Quaternion delta;
+        Quaternion _delta;
         double scale;
-        Point translation = new Point();
+        Point _translation;
 
         public event TrackballEventHandler OnTrackBallMoved;
         public event TrackballEventHandler OnTrackBallZoom;
@@ -107,20 +102,11 @@ namespace IronPlot.Plotting3D
                 OnTrackBallTranslate(this, e);
         }
 
-        public Quaternion Delta
-        {
-            get { return delta; }
-        }
+        public Quaternion Delta => _delta;
 
-        public double Scale
-        {
-            get { return scale; }
-        }
+        public double Scale => scale;
 
-        public Point Translation
-        {
-            get { return translation; }
-        }
+        public Point Translation => _translation;
 
         public Trackball()
         {
@@ -133,21 +119,13 @@ namespace IronPlot.Plotting3D
         ///     A transform to move the camera or scene to the trackball's
         ///     current orientation and Scale.
         /// </summary>
-        public Transform3DGroup Transform
-        {
-            get { return (_transform as Transform3DGroup); }
-            //get { return (_matrixTransform as Transform3D); }
-        }
+        public Transform3DGroup Transform => _transform;
 
         /// <summary>
         ///     A transform to move the camera or scene to the trackball's
         ///     current orientation and Scale.
         /// </summary>
-        public AxisAngleRotation3D Rotation
-        {
-            get { return _rotation; }
-            //get { return (_matrixTransform as Transform3D); }
-        }
+        public AxisAngleRotation3D Rotation => _rotation;
 
         #region Event Handling
 
@@ -162,29 +140,29 @@ namespace IronPlot.Plotting3D
             {
                 if (_eventSource != null)
                 {
-                    _eventSource.MouseDown -= this.OnMouseDown;
-                    _eventSource.MouseUp -= this.OnMouseUp;
-                    _eventSource.MouseMove -= this.OnMouseMove;
-                    _eventSource.MouseWheel -= this.OnMouseWheel;
+                    _eventSource.MouseDown -= OnMouseDown;
+                    _eventSource.MouseUp -= OnMouseUp;
+                    _eventSource.MouseMove -= OnMouseMove;
+                    _eventSource.MouseWheel -= OnMouseWheel;
                 }
 
                 _eventSource = value;
 
-                _eventSource.MouseDown += this.OnMouseDown;
-                _eventSource.MouseUp += this.OnMouseUp;
-                _eventSource.MouseMove += this.OnMouseMove;
-                _eventSource.MouseWheel += this.OnMouseWheel;
+                _eventSource.MouseDown += OnMouseDown;
+                _eventSource.MouseUp += OnMouseUp;
+                _eventSource.MouseMove += OnMouseMove;
+                _eventSource.MouseWheel += OnMouseWheel;
             }
         }
 
         protected virtual void OnMouseDown(object sender, MouseEventArgs e)
         {
             Mouse.Capture(EventSource, CaptureMode.Element);
-            _previousPosition2D = e.GetPosition(EventSource);
-            _previousPosition3D = ProjectToTrackball(
+            PreviousPosition2D = e.GetPosition(EventSource);
+            PreviousPosition3D = ProjectToTrackball(
                 EventSource.ActualWidth,
                 EventSource.ActualHeight,
-                _previousPosition2D);
+                PreviousPosition2D);
         }
 
         protected virtual void OnMouseUp(object sender, MouseEventArgs e)
@@ -201,99 +179,99 @@ namespace IronPlot.Plotting3D
 
         protected virtual void OnMouseMove(object sender, MouseEventArgs e)
         {
-            Point currentPosition = e.GetPosition(EventSource);
-            bool ctrlOrShift = Keyboard.IsKeyDown(Key.LeftCtrl) || Keyboard.IsKeyDown(Key.RightCtrl) ||
+            var currentPosition = e.GetPosition(EventSource);
+            var ctrlOrShift = Keyboard.IsKeyDown(Key.LeftCtrl) || Keyboard.IsKeyDown(Key.RightCtrl) ||
                 Keyboard.IsKeyDown(Key.LeftShift) || Keyboard.IsKeyDown(Key.LeftShift);
 
             // Prefer tracking to zooming if both buttons are pressed.
             if (e.LeftButton == MouseButtonState.Pressed && !ctrlOrShift)
             {
-                if (_mouseLeftDown)
+                if (MouseLeftDown)
                 {
                     Track(currentPosition);
                 }
                 else
                 {
-                    _mouseLeftDown = true;
+                    MouseLeftDown = true;
                     Mouse.Capture(EventSource, CaptureMode.Element);
-                    _previousPosition2D = e.GetPosition(EventSource);
-                    _previousPosition3D = ProjectToTrackball(
+                    PreviousPosition2D = e.GetPosition(EventSource);
+                    PreviousPosition3D = ProjectToTrackball(
                         EventSource.ActualWidth,
                         EventSource.ActualHeight,
-                        _previousPosition2D);
+                        PreviousPosition2D);
                 }
             }
             else if (e.RightButton == MouseButtonState.Pressed || (e.LeftButton == MouseButtonState.Pressed && ctrlOrShift))
             {
-                if (_mouseRightDown)
+                if (MouseRightDown)
                 {
                     //if (Zoom(currentPosition)) e.Handled = true;
                     Translate(currentPosition);
                 }
                 else
                 {
-                    _mouseRightDown = true;
+                    MouseRightDown = true;
                     Mouse.Capture(EventSource, CaptureMode.Element);
-                    _previousPosition2D = e.GetPosition(EventSource);
-                    _previousPosition3D = ProjectToTrackball(
+                    PreviousPosition2D = e.GetPosition(EventSource);
+                    PreviousPosition3D = ProjectToTrackball(
                         EventSource.ActualWidth,
                         EventSource.ActualHeight,
-                        _previousPosition2D);
+                        PreviousPosition2D);
                 }
             }
             else
             {
-                _mouseLeftDown = false;
-                _mouseRightDown = false;
+                MouseLeftDown = false;
+                MouseRightDown = false;
             }
 
-            _previousPosition2D = currentPosition;
+            PreviousPosition2D = currentPosition;
         }
 
         #endregion Event Handling
 
         protected void Track(Point currentPosition)
         {
-            Vector3D currentPosition3D = ProjectToTrackball(
+            var currentPosition3D = ProjectToTrackball(
                 EventSource.ActualWidth, EventSource.ActualHeight, currentPosition);
 
-            Vector3D axis = Vector3D.CrossProduct(_previousPosition3D, currentPosition3D);
-            double angle = Vector3D.AngleBetween(_previousPosition3D, currentPosition3D);
+            var axis = Vector3D.CrossProduct(PreviousPosition3D, currentPosition3D);
+            var angle = Vector3D.AngleBetween(PreviousPosition3D, currentPosition3D);
             if (angle == 0.0) return;
-            delta = new Quaternion(axis, -angle);
+            _delta = new Quaternion(axis, -angle);
 
             // Get the current orientantion from the RotateTransform3D
-            AxisAngleRotation3D r = _rotation;
-            Quaternion q = new Quaternion(_rotation.Axis, _rotation.Angle);
+            var r = _rotation;
+            var q = new Quaternion(_rotation.Axis, _rotation.Angle);
 
             // Compose the delta with the previous orientation
-            q *= delta;
+            q *= _delta;
 
             // Write the new orientation back to the Rotation3D
             _rotation.Axis = q.Axis;
             _rotation.Angle = q.Angle;
 
-            _previousPosition3D = currentPosition3D;
+            PreviousPosition3D = currentPosition3D;
 
             RaiseTrackballMovedEvent(EventArgs.Empty);
         }
 
         protected Vector3D ProjectToTrackball(double width, double height, Point point)
         {
-            double x = point.X / (width / 2);    // Scale so bounds map to [0,0] - [2,2]
-            double y = point.Y / (height / 2);
+            var x = point.X / (width / 2);    // Scale so bounds map to [0,0] - [2,2]
+            var y = point.Y / (height / 2);
 
             x = x - 1;                           // Translate 0,0 to the center
             y = 1 - y;                           // Flip so +Y is up instead of down
 
-            double z2 = 1 - x * x - y * y;       // z^2 = 1 - x^2 - y^2
-            double z = z2 > 0 ? Math.Sqrt(z2) : 0;
+            var z2 = 1 - x * x - y * y;       // z^2 = 1 - x^2 - y^2
+            var z = z2 > 0 ? Math.Sqrt(z2) : 0;
             return new Vector3D(x, y, z);
         }
 
         protected bool Zoom(Point currentPosition)
         {
-            double yDelta = currentPosition.Y - _previousPosition2D.Y;
+            var yDelta = currentPosition.Y - PreviousPosition2D.Y;
             scale = Math.Exp(yDelta / 100);    // e^(yDelta/100) is fairly arbitrary.
             return Zoom(scale);
         }
@@ -311,8 +289,8 @@ namespace IronPlot.Plotting3D
 
         protected void Translate(Point currentPosition)
         {
-            translation = new Point((currentPosition.X - _previousPosition2D.X) / EventSource.ActualWidth, 
-                (currentPosition.Y - _previousPosition2D.Y) / EventSource.ActualHeight);
+            _translation = new Point((currentPosition.X - PreviousPosition2D.X) / EventSource.ActualWidth, 
+                (currentPosition.Y - PreviousPosition2D.Y) / EventSource.ActualHeight);
             RaiseTranslateEvent(EventArgs.Empty);
         }
     }

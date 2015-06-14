@@ -1,13 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+using System.Windows.Media;
 using SharpDX;
 using SharpDX.Direct2D1;
-using System.Windows;
-using System.Drawing;
-using Brushes = System.Windows.Media.Brushes;
-using MatrixTransform = System.Windows.Media.MatrixTransform;
+using Matrix = SharpDX.Matrix;
 
 namespace IronPlot
 {
@@ -17,37 +12,34 @@ namespace IronPlot
     /// </summary>
     public class DirectPathScatter : DirectPath
     {
-        private Curve curve;
-        public Curve Curve { get { return curve; } set { curve = value; } }
+        private Curve _curve;
+        public Curve Curve { get { return _curve; } set { _curve = value; } }
 
-        public double xOffsetMarker;
-        public double yOffsetMarker;
+        public double XOffsetMarker;
+        public double YOffsetMarker;
 
-        private MatrixTransform graphToCanvas;
-        public MatrixTransform GraphToCanvas { get { return graphToCanvas; } set { graphToCanvas = value; } }
+        private MatrixTransform _graphToCanvas;
+        public MatrixTransform GraphToCanvas { get { return _graphToCanvas; } set { _graphToCanvas = value; } }
 
         public void RenderScatterGeometry(RenderTarget renderTarget)
         {
-            double[] x = curve.X;
-            double[] y = curve.Y;
-            int length = x.Length;
+            var x = _curve.X;
+            var y = _curve.Y;
+            var length = x.Length;
             double xScale, xOffset, yScale, yOffset;
-            xScale = graphToCanvas.Matrix.M11;
-            xOffset = graphToCanvas.Matrix.OffsetX - this.xOffsetMarker;
-            yScale = graphToCanvas.Matrix.M22;
-            yOffset = graphToCanvas.Matrix.OffsetY - this.yOffsetMarker;
-            bool[] include = curve.includeMarker;
-            StrokeStyleProperties properties = new StrokeStyleProperties();
-            properties.LineJoin = LineJoin.MiterOrBevel;
-            StrokeStyle strokeStyle = new StrokeStyle(renderTarget.Factory, properties);
-            for (int i = 0; i < length; ++i)
+            xScale = _graphToCanvas.Matrix.M11;
+            xOffset = _graphToCanvas.Matrix.OffsetX - XOffsetMarker;
+            yScale = _graphToCanvas.Matrix.M22;
+            yOffset = _graphToCanvas.Matrix.OffsetY - YOffsetMarker;
+            var include = _curve.IncludeMarker;
+            var properties = new StrokeStyleProperties {LineJoin = LineJoin.MiterOrBevel};
+            var strokeStyle = new StrokeStyle(renderTarget.Factory, properties);
+            for (var i = 0; i < length; ++i)
             {
-                if (include[i])
-                {
-                    renderTarget.Transform = (Matrix3x2)Matrix.Translation((float)(x[i] * xScale + xOffset), (float)(y[i] * yScale + yOffset), 0);
-                    renderTarget.FillGeometry(Geometry, FillBrush);
-                    renderTarget.DrawGeometry(Geometry, Brush, (float)StrokeThickness, strokeStyle);
-                }
+                if (!include[i]) continue;
+                renderTarget.Transform = Matrix.Translation((float)(x[i] * xScale + xOffset), (float)(y[i] * yScale + yOffset), 0);
+                renderTarget.FillGeometry(Geometry, FillBrush);
+                renderTarget.DrawGeometry(Geometry, Brush, (float)StrokeThickness, strokeStyle);
             }
             renderTarget.Transform = Matrix3x2.Identity;
         }
@@ -60,10 +52,10 @@ namespace IronPlot
                 Geometry = null;
             }
             if (Factory == null) return;
-            float width = (float)Math.Abs(markersSize);
-            float height = (float)Math.Abs(markersSize);
-            this.xOffsetMarker = 0; // width / 2;
-            this.yOffsetMarker = 0; // height / 2;
+            var width = (float)Math.Abs(markersSize);
+            var height = (float)Math.Abs(markersSize);
+            XOffsetMarker = 0; // width / 2;
+            YOffsetMarker = 0; // height / 2;
             Geometry = MarkerGeometriesD2D.MarkerGeometry(markersType, Factory, width, height);
            
         }

@@ -1,37 +1,23 @@
 ﻿// Copyright (c) 2010 Joe Moorhouse
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Interop;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Media3D;
-using System.Windows.Navigation;
-using SharpDX;
-using SharpDX.Direct3D9;
-using System.ComponentModel;
 using System.Windows.Data;
-using System.Windows.Markup;
+using System.Windows.Media.Media3D;
 using IronPlot.ManagedD3D;
+using SharpDX;
 
 namespace IronPlot.Plotting3D
 {
     //[ContentProperty("ModelsProperty")]
     public class Viewport3D : PlotPanelBase
     {     
-        internal Trackball trackball;
-        private Axes3D axes;
-        private Viewport3DControl viewport3DControl;
-        private ViewportImage viewport3DImage; 
+        internal Trackball Trackball;
+        private Axes3D _axes;
+        private Viewport3DControl _viewport3DControl;
+        private ViewportImage _viewport3DImage; 
 
-        public Axes3D Axes
-        {
-            get { return axes; }
-        }
+        public Axes3D Axes => _axes;
 
         #region DependencyProperties
         
@@ -43,7 +29,7 @@ namespace IronPlot.Plotting3D
         public static readonly DependencyProperty GraphToWorldProperty =
             DependencyProperty.Register("GraphToWorld",
             typeof(MatrixTransform3D), typeof(Viewport3D),
-            new PropertyMetadata((MatrixTransform3D)MatrixTransform3D.Identity, OnGraphToWorldChanged));
+            new PropertyMetadata((MatrixTransform3D)Transform3D.Identity, OnGraphToWorldChanged));
 
         public static readonly DependencyProperty GraphMinProperty =
             DependencyProperty.Register("GraphMin",
@@ -147,26 +133,26 @@ namespace IronPlot.Plotting3D
 
         protected void UpdateGraphToWorld()
         {
-            Point3D graphMin = (Point3D)GetValue(GraphMinProperty);
-            Point3D graphMax = (Point3D)GetValue(GraphMaxProperty);
-            double scaleX = (worldMax.X - worldMin.X) / (graphMax.X - graphMin.X);
-            double scaleY = (worldMax.Y - worldMin.Y) / (graphMax.Y - graphMin.Y);
-            double scaleZ = (worldMax.Z - worldMin.Z) / (graphMax.Z - graphMin.Z);
-            double offX = -graphMin.X * scaleX + worldMin.X;
-            double offY = -graphMin.Y * scaleY + worldMin.Y;
-            double offZ = -graphMin.Z * scaleZ + worldMin.Z;
+            var graphMin = (Point3D)GetValue(GraphMinProperty);
+            var graphMax = (Point3D)GetValue(GraphMaxProperty);
+            var scaleX = (worldMax.X - worldMin.X) / (graphMax.X - graphMin.X);
+            var scaleY = (worldMax.Y - worldMin.Y) / (graphMax.Y - graphMin.Y);
+            var scaleZ = (worldMax.Z - worldMin.Z) / (graphMax.Z - graphMin.Z);
+            var offX = -graphMin.X * scaleX + worldMin.X;
+            var offY = -graphMin.Y * scaleY + worldMin.Y;
+            var offZ = -graphMin.Z * scaleZ + worldMin.Z;
 
-            Matrix3D transform = new Matrix3D(scaleX, 0, 0, 0, 0, scaleY, 0, 0,
+            var transform = new Matrix3D(scaleX, 0, 0, 0, 0, scaleY, 0, 0,
                 0, 0, scaleZ, 0, offX, offY, offZ, 1);
 
-            MatrixTransform3D matrixTransform = new MatrixTransform3D();
+            var matrixTransform = new MatrixTransform3D();
             matrixTransform.Matrix = transform;
             SetValue(GraphToWorldProperty, matrixTransform);
         }
 
         #endregion
 
-        public Viewport3D() : base()
+        public Viewport3D()
         {
             Initialize();
         }
@@ -175,81 +161,81 @@ namespace IronPlot.Plotting3D
         {
             MeasureAnnotations(availableSize);
             // Return the region available for plotting and set legendRegion:
-            Rect available = PlaceAnnotations(availableSize);
-            viewport3DControl.Measure(new Size(available.Width, available.Height));
+            var available = PlaceAnnotations(availableSize);
+            _viewport3DControl.Measure(new Size(available.Width, available.Height));
             return availableSize;
         }
 
         protected override Size ArrangeOverride(Size finalSize)
         {
-            Rect final = PlaceAnnotations(finalSize);
+            var final = PlaceAnnotations(finalSize);
             AxesRegion = final;
-            axes.UpdateLabels();
+            _axes.UpdateLabels();
             ArrangeAnnotations(finalSize);
-            viewport3DControl.Arrange(final);
+            _viewport3DControl.Arrange(final);
             return finalSize;
         }
         
         public void Initialize()
         {
             Background = null;
-            viewport3DControl = new Viewport3DControl();
-            viewport3DControl.SetValue(Grid.ZIndexProperty, 100);
-            this.Children.Add(viewport3DControl);
+            _viewport3DControl = new Viewport3DControl();
+            _viewport3DControl.SetValue(ZIndexProperty, 100);
+            Children.Add(_viewport3DControl);
 
-            viewport3DImage = viewport3DControl.Viewport3DImage;
-            if (viewport3DImage == null)
+            _viewport3DImage = _viewport3DControl.Viewport3DImage;
+            if (_viewport3DImage == null)
             {
-                axes = new Axes3D();
+                _axes = new Axes3D();
                 SetValue(ModelsProperty, new Model3DCollection(null));
                 return;
             }
-            viewport3DImage.ViewPort3D = this;
+            _viewport3DImage.ViewPort3D = this;
 
-            SetValue(ModelsProperty, viewport3DImage.Models);
+            SetValue(ModelsProperty, _viewport3DImage.Models);
             // Set the owner of the Model3DCollection to be the D3DImageViewport
             // This ensures that the Model3D objects are rendered by the D3DImageViewport
-            viewport3DImage.SetLayer2D(viewport3DImage.Canvas, GraphToWorld);
+            _viewport3DImage.SetLayer2D(_viewport3DImage.Canvas, GraphToWorld);
 
-            viewport3DImage.Models.Changed += new Model3DCollection.ItemEventHandler(Models_Changed);
+            _viewport3DImage.Models.Changed += Models_Changed;
 
-            trackball = new Trackball();
-            trackball.EventSource = viewport3DControl; //viewport3DImage.Canvas;
-            trackball.OnTrackBallMoved += new TrackballEventHandler(trackball_TrackBallMoved);
-            trackball.OnTrackBallZoom += new TrackballEventHandler(trackball_OnTrackBallZoom);
-            trackball.OnTrackBallTranslate += new TrackballEventHandler(trackball_OnTrackBallTranslate);
+            Trackball = new Trackball();
+            Trackball.EventSource = _viewport3DControl; //viewport3DImage.Canvas;
+            Trackball.OnTrackBallMoved += trackball_TrackBallMoved;
+            Trackball.OnTrackBallZoom += trackball_OnTrackBallZoom;
+            Trackball.OnTrackBallTranslate += trackball_OnTrackBallTranslate;
 
-            axes = new Axes3D();
-            viewport3DImage.Models.Add(axes);
+            _axes = new Axes3D();
+            _viewport3DImage.Models.Add(_axes);
 
-            viewport3DImage.CameraPosition = new Vector3(-3f, -3f, 2f);
-            viewport3DImage.CameraTarget = new Vector3(0f, 0f, 0f);
+            _viewport3DImage.CameraPosition = new Vector3(-3f, -3f, 2f);
+            _viewport3DImage.CameraTarget = new Vector3(0f, 0f, 0f);
             //
-            Binding bindingGraphMin = new Binding("GraphMin");
+            var bindingGraphMin = new Binding("GraphMin");
             bindingGraphMin.Source = this;
             bindingGraphMin.Mode = BindingMode.TwoWay;
-            BindingOperations.SetBinding(axes, Axes3D.GraphMinProperty, bindingGraphMin);
-            Binding bindingGraphMax = new Binding("GraphMax");
+            BindingOperations.SetBinding(_axes, Axes3D.GraphMinProperty, bindingGraphMin);
+            var bindingGraphMax = new Binding("GraphMax");
             bindingGraphMax.Source = this;
             bindingGraphMax.Mode = BindingMode.TwoWay;
-            BindingOperations.SetBinding(axes, Axes3D.GraphMaxProperty, bindingGraphMax);
-            Binding bindingGraphToWorld = new Binding("GraphToWorld");
+            BindingOperations.SetBinding(_axes, Axes3D.GraphMaxProperty, bindingGraphMax);
+            var bindingGraphToWorld = new Binding("GraphToWorld");
             bindingGraphToWorld.Source = this;
             bindingGraphToWorld.Mode = BindingMode.OneWay;
-            BindingOperations.SetBinding(viewport3DImage, ViewportImage.ModelToWorldProperty, bindingGraphToWorld);
+            BindingOperations.SetBinding(_viewport3DImage, ViewportImage.ModelToWorldProperty, bindingGraphToWorld);
             ////
             GraphMax = new Point3D(1, 1, 1);
             GraphMin = new Point3D(-1, -1, -1);
             WorldMin = new Point3D(-1, -1, -1);
             WorldMax = new Point3D(1, 1, 1);
-            axes.UpdateOpenSides(FindPhi());
+            _axes.UpdateOpenSides(FindPhi());
 
-            this.IsVisibleChanged += new DependencyPropertyChangedEventHandler(Viewport3D_IsVisibleChanged);
+            IsVisibleChanged += Viewport3D_IsVisibleChanged;
         }
 
         void Viewport3D_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
         {
-            viewport3DImage.Visible = (bool)e.NewValue;
+            _viewport3DImage.Visible = (bool)e.NewValue;
         }
 
         /// <summary>
@@ -258,7 +244,7 @@ namespace IronPlot.Plotting3D
         /// </summary>
         protected void OnRequestRender(Object sender, EventArgs e)
         {
-            viewport3DImage.RequestRender();
+            _viewport3DImage.RequestRender();
         }
 
         /// <summary>
@@ -267,8 +253,8 @@ namespace IronPlot.Plotting3D
         protected void Models_Changed(Object sender, ItemEventArgs e)
         {
             // Find new bounds that gives the world max and min
-            Cuboid bounds = new Cuboid(new Point3D(0, 0, 0), new Point3D(0, 0, 0));
-            foreach (Model3D model in (Model3DCollection)sender)
+            var bounds = new Cuboid(new Point3D(0, 0, 0), new Point3D(0, 0, 0));
+            foreach (var model in (Model3DCollection)sender)
             {
                 bounds = Cuboid.Union(model.Bounds, bounds);
             }
@@ -282,80 +268,80 @@ namespace IronPlot.Plotting3D
         
         protected void Base_OnDraw(Object sender, EventArgs e)
         {
-            axes.UpdateLabels();
+            _axes.UpdateLabels();
         }
 
         protected void trackball_TrackBallMoved(Object sender, EventArgs e)
         {
-            System.Windows.Media.Media3D.Quaternion delta = ((Trackball)sender).Delta;
-            Vector3 deltaAxis = new Vector3();
+            var delta = ((Trackball)sender).Delta;
+            var deltaAxis = new Vector3();
             deltaAxis.X = (float)delta.Axis.X; 
             deltaAxis.Y = (float)delta.Axis.Y;
             deltaAxis.Z = (float)delta.Axis.Z;
             deltaAxis.Normalize();
-            Vector3 cameraLookDirection = viewport3DImage.CameraTarget - viewport3DImage.CameraPosition;
-            Vector3 cameraUpDirection = viewport3DImage.CameraUpVector;
+            var cameraLookDirection = _viewport3DImage.CameraTarget - _viewport3DImage.CameraPosition;
+            var cameraUpDirection = _viewport3DImage.CameraUpVector;
             cameraLookDirection.Normalize();
             // Subtract any component of cameraUpDirection along cameraLookDirection
             cameraUpDirection = cameraUpDirection - Vector3.Multiply(cameraLookDirection, Vector3.Dot(cameraUpDirection, cameraLookDirection));
             cameraUpDirection.Normalize();
-            Vector3 cameraX = Vector3.Cross(cameraLookDirection, cameraUpDirection);
+            var cameraX = Vector3.Cross(cameraLookDirection, cameraUpDirection);
             // Get axis of rotation in the camera coordinates
-            Vector3 deltaAxisWorld = Vector3.Multiply(cameraX, deltaAxis.X) +
+            var deltaAxisWorld = Vector3.Multiply(cameraX, deltaAxis.X) +
                 Vector3.Multiply(cameraUpDirection, deltaAxis.Y) +
                 Vector3.Multiply(cameraLookDirection, -deltaAxis.Z);
-            SharpDX.Matrix cameraTransform = SharpDX.Matrix.RotationAxis(deltaAxisWorld, (float)(delta.Angle * Math.PI / 180.0));
-            viewport3DImage.CameraTarget = Vector3.Transform(viewport3DImage.CameraTarget, cameraTransform).ToVector3();
-            viewport3DImage.CameraPosition = Vector3.Transform(viewport3DImage.CameraPosition, cameraTransform).ToVector3();
-            viewport3DImage.CameraUpVector = Vector3.Transform(viewport3DImage.CameraUpVector, cameraTransform).ToVector3();
-            double newPhi = FindPhi();
-            if (newPhi != lastPhi)
+            var cameraTransform = Matrix.RotationAxis(deltaAxisWorld, (float)(delta.Angle * Math.PI / 180.0));
+            _viewport3DImage.CameraTarget = Vector3.Transform(_viewport3DImage.CameraTarget, cameraTransform).ToVector3();
+            _viewport3DImage.CameraPosition = Vector3.Transform(_viewport3DImage.CameraPosition, cameraTransform).ToVector3();
+            _viewport3DImage.CameraUpVector = Vector3.Transform(_viewport3DImage.CameraUpVector, cameraTransform).ToVector3();
+            var newPhi = FindPhi();
+            if (newPhi != _lastPhi)
             {
-                lastPhi = newPhi;
-                axes.UpdateOpenSides(newPhi);
+                _lastPhi = newPhi;
+                _axes.UpdateOpenSides(newPhi);
             }
         }
 
         protected void trackball_OnTrackBallZoom(Object sender, EventArgs e)
         {
-            double Scale = ((Trackball)sender).Scale;
-            switch (this.ProjectionType)
+            var scale = ((Trackball)sender).Scale;
+            switch (ProjectionType)
             {
                 case ProjectionType.Perspective:
-                    viewport3DImage.CameraPosition = Vector3.Multiply(viewport3DImage.CameraPosition, (float)Scale);
+                    _viewport3DImage.CameraPosition = Vector3.Multiply(_viewport3DImage.CameraPosition, (float)scale);
                     break;
                 case ProjectionType.Orthogonal:
-                    viewport3DImage.Scale = Convert.ToSingle(viewport3DImage.Scale / Scale);
-                    viewport3DImage.RequestRender();
+                    _viewport3DImage.Scale = Convert.ToSingle(_viewport3DImage.Scale / scale);
+                    _viewport3DImage.RequestRender();
                     break;
             }
         }
 
         protected void trackball_OnTrackBallTranslate(Object sender, EventArgs e)
         {
-            Point translation = ((Trackball)sender).Translation;
-            Vector3 cameraLookDirection = viewport3DImage.CameraTarget - viewport3DImage.CameraPosition;
-            float distance = cameraLookDirection.Length();
-            Vector3 cameraUpDirection = viewport3DImage.CameraUpVector;
+            var translation = ((Trackball)sender).Translation;
+            var cameraLookDirection = _viewport3DImage.CameraTarget - _viewport3DImage.CameraPosition;
+            var distance = cameraLookDirection.Length();
+            var cameraUpDirection = _viewport3DImage.CameraUpVector;
             cameraLookDirection.Normalize();
             // Subtract any component of cameraUpDirection along cameraLookDirection
             cameraUpDirection = cameraUpDirection - Vector3.Multiply(cameraLookDirection, Vector3.Dot(cameraUpDirection, cameraLookDirection));
             cameraUpDirection.Normalize();
-            Vector3 cameraX = Vector3.Cross(cameraLookDirection, cameraUpDirection);
-            float scalingFactor = viewport3DImage.TanSemiFOV * distance * 2;
-            Vector3 pan = -cameraX * (float)translation.X * scalingFactor + cameraUpDirection * (float)translation.Y * scalingFactor;
-            viewport3DImage.CameraPosition = viewport3DImage.CameraPosition + pan;
-            viewport3DImage.CameraTarget = viewport3DImage.CameraTarget + pan;
+            var cameraX = Vector3.Cross(cameraLookDirection, cameraUpDirection);
+            var scalingFactor = _viewport3DImage.TanSemiFov * distance * 2;
+            var pan = -cameraX * (float)translation.X * scalingFactor + cameraUpDirection * (float)translation.Y * scalingFactor;
+            _viewport3DImage.CameraPosition = _viewport3DImage.CameraPosition + pan;
+            _viewport3DImage.CameraTarget = _viewport3DImage.CameraTarget + pan;
         }
 
-        private double lastPhi = -10;
+        private double _lastPhi = -10;
         /// <summary>
         /// Calculate azimuthal angle
         /// </summary>
         /// <returns></returns>
         protected double FindPhi()
         {
-            Vector3 vector = viewport3DImage.CameraPosition - viewport3DImage.CameraTarget;
+            var vector = _viewport3DImage.CameraPosition - _viewport3DImage.CameraTarget;
             return Math.Atan2(vector.Y, vector.X);
         }
 
@@ -366,11 +352,11 @@ namespace IronPlot.Plotting3D
         /// <param name="dpi">Resolution in dpi</param>
         internal void SetResolution(int dpi)
         {
-            int width = (int)(viewport3DControl.ActualWidth * dpi / 96.0);
-            int height = (int)(viewport3DControl.ActualHeight * dpi / 96.0);
+            var width = (int)(_viewport3DControl.ActualWidth * dpi / 96.0);
+            var height = (int)(_viewport3DControl.ActualHeight * dpi / 96.0);
             Models.SetModelResolution(dpi);
-            viewport3DImage.SetImageSize((int)viewport3DControl.ActualWidth, (int)viewport3DControl.ActualHeight, dpi);
-            viewport3DImage.RenderScene();
+            _viewport3DImage.SetImageSize((int)_viewport3DControl.ActualWidth, (int)_viewport3DControl.ActualHeight, dpi);
+            _viewport3DImage.RenderScene();
         }
     }
 }

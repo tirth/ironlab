@@ -4,9 +4,9 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Windows;
 using System.Windows.Media;
+
 #if ILNumerics
 using ILNumerics;
 using ILNumerics.Storage;
@@ -33,9 +33,9 @@ namespace IronPlot
         /// <returns></returns>
         public static List<Plot2DCurve> Plot2D(params object[] parameters)
         {
-            List<Plot2DCurve> curves = new List<Plot2DCurve>();
+            var curves = new List<Plot2DCurve>();
             Plot2D plot2D = null;
-            int paramIndex = 0; // current parameter
+            var paramIndex = 0; // current parameter
             if (parameters.Length > 0 && parameters[0].GetType() == typeof(Plot2D))
             {
                 plot2D = (Plot2D)parameters[0];
@@ -43,11 +43,11 @@ namespace IronPlot
             }
             else plot2D = new Plot2D();
             // x and y will contain lists of x and y vectors to be plotted
-            List<double[]> x = new List<double[]>();
-            List<double[]> y = new List<double[]>();
+            var x = new List<double[]>();
+            var y = new List<double[]>();
             double[] createdX = null;
-            List<string> lineProperty = new List<string>();
-            int lastLineIndex = paramIndex; // index of the end of the last line specification
+            var lineProperty = new List<string>();
+            var lastLineIndex = paramIndex; // index of the end of the last line specification
             while (paramIndex < parameters.Length)
             {
                 // Get the next two parameters, or up to the next string entry (line property) 
@@ -90,7 +90,7 @@ namespace IronPlot
                 }
                 paramIndex++; lastLineIndex = paramIndex;
             }
-            for (int i = 0; i < x.Count; ++i)
+            for (var i = 0; i < x.Count; ++i)
             {
                 curves.Add(plot2D.AddLine(x[i], y[i], lineProperty[i]));
             }
@@ -99,7 +99,7 @@ namespace IronPlot
 
         static internal Window CreateNewWindow()
         {
-            Window window = new Window() { Height = 640, Width = 640, Background = Brushes.White };
+            var window = new Window { Height = 640, Width = 640, Background = Brushes.White };
             window.Show();
             return window;
         }
@@ -107,16 +107,16 @@ namespace IronPlot
         public static double[] Array(object convertible)
         {
             if (convertible is double[]) return convertible as double[];
-            else if (convertible is DateTime[]) return (convertible as DateTime[]).Select(t => t.ToOADate()).ToArray();
-            else if (convertible is IEnumerable<double>) return (convertible as IEnumerable<double>).ToArray();
-            else if (convertible is IEnumerable<DateTime>) return (convertible as IEnumerable<DateTime>).Select(t => t.ToOADate()).ToArray();
-            else if ((convertible is IEnumerable<object>) || (convertible is IEnumerable))
+            if (convertible is DateTime[]) return (convertible as DateTime[]).Select(t => t.ToOADate()).ToArray();
+            if (convertible is IEnumerable<double>) return (convertible as IEnumerable<double>).ToArray();
+            if (convertible is IEnumerable<DateTime>) return (convertible as IEnumerable<DateTime>).Select(t => t.ToOADate()).ToArray();
+            if ((convertible is IEnumerable<object>) || (convertible is IEnumerable))
             {
-                System.Array array = GeneralArray.ToDoubleArray(convertible);
+                var array = GeneralArray.ToDoubleArray(convertible);
                 if (array.Rank == 1) return array as double[];
-                else throw new Exception("Array must be one dimensional.");
+                throw new Exception("Array must be one dimensional.");
             }
-            else throw new Exception("Unknown array type.");
+            throw new Exception("Unknown array type.");
         }
     }
 }

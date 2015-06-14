@@ -2,8 +2,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 
 namespace PythonConsoleControl
 {
@@ -12,12 +10,8 @@ namespace PythonConsoleControl
     /// </summary>
     public class CommandLineHistory
     {
-        List<string> lines = new List<string>();
-        int position;
-
-        public CommandLineHistory()
-        {
-        }
+        readonly List<string> _lines = new List<string>();
+        int _position;
 
         /// <summary>
         /// Adds the command line to the history.
@@ -26,20 +20,20 @@ namespace PythonConsoleControl
         {
             if (!String.IsNullOrEmpty(line))
             {
-                int index = lines.Count - 1;
+                var index = _lines.Count - 1;
                 if (index >= 0)
                 {
-                    if (lines[index] != line)
+                    if (_lines[index] != line)
                     {
-                        lines.Add(line);
+                        _lines.Add(line);
                     }
                 }
                 else
                 {
-                    lines.Add(line);
+                    _lines.Add(line);
                 }
             }
-            position = lines.Count;
+            _position = _lines.Count;
         }
 
         /// <summary>
@@ -49,9 +43,9 @@ namespace PythonConsoleControl
         {
             get
             {
-                if ((position >= 0) && (position < lines.Count))
+                if ((_position >= 0) && (_position < _lines.Count))
                 {
-                    return lines[position];
+                    return _lines[_position];
                 }
                 return null;
             }
@@ -63,12 +57,12 @@ namespace PythonConsoleControl
         /// <returns>False if the current position is at the end of the command line history.</returns>
         public bool MoveNext()
         {
-            int nextPosition = position + 1;
-            if (nextPosition < lines.Count)
+            var nextPosition = _position + 1;
+            if (nextPosition < _lines.Count)
             {
-                ++position;
+                ++_position;
             }
-            return nextPosition < lines.Count;
+            return nextPosition < _lines.Count;
         }
 
         /// <summary>
@@ -77,15 +71,15 @@ namespace PythonConsoleControl
         /// <returns>False if the current position is at the start of the command line history.</returns>
         public bool MovePrevious()
         {
-            if (position >= 0)
+            if (_position >= 0)
             {
-                if (position == 0)
+                if (_position == 0)
                 {
                     return false;
                 }
-                --position;
+                --_position;
             }
-            return position >= 0;
+            return _position >= 0;
         }
     }
 }

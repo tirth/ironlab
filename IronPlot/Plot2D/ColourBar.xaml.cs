@@ -1,18 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 using System.Windows.Threading;
-using System.Threading;
+
 #if ILNumerics
 using ILNumerics;
 using ILNumerics.Storage;
@@ -26,34 +19,34 @@ namespace IronPlot
     /// </summary>
     public partial class ColourBar : UserControl
     {
-        internal ColourBarPanel colourBarPanel;
-        internal ColourMap colourMap;
-        private double[] interpolationPoints;
-        private DispatcherTimer colourMapUpdateTimer;
-        private bool updateInProgress = false;
-        private FalseColourImage image;
-        private List<Slider> sliderList;
+        internal ColourBarPanel ColourBarPanel;
+        internal ColourMap ColourMap;
+        private double[] _interpolationPoints;
+        private readonly DispatcherTimer _colourMapUpdateTimer;
+        private bool _updateInProgress;
+        private readonly FalseColourImage _image;
+        private List<Slider> _sliderList;
 
         internal double Min
         {
             set
             {
-                colourBarPanel.Axes.YAxes[0].Min = value;
-                Rect newBounds = image.Bounds;
-                image.Bounds = new Rect(newBounds.Left, value, newBounds.Width, newBounds.Bottom - value);
+                ColourBarPanel.Axes.YAxes[0].Min = value;
+                var newBounds = _image.Bounds;
+                _image.Bounds = new Rect(newBounds.Left, value, newBounds.Width, newBounds.Bottom - value);
             }
-            get { return colourBarPanel.Axes.YAxes[0].Min; }
+            get { return ColourBarPanel.Axes.YAxes[0].Min; }
         }
 
         internal double Max
         {
             set
             {
-                colourBarPanel.Axes.YAxes[0].Max = value;
-                Rect newBounds = image.Bounds;
-                image.Bounds = new Rect(newBounds.Left, newBounds.Top, newBounds.Width, value - newBounds.Top);
+                ColourBarPanel.Axes.YAxes[0].Max = value;
+                var newBounds = _image.Bounds;
+                _image.Bounds = new Rect(newBounds.Left, newBounds.Top, newBounds.Width, value - newBounds.Top);
             }
-            get { return colourBarPanel.Axes.YAxes[0].Max; }
+            get { return ColourBarPanel.Axes.YAxes[0].Max; }
         }
 
         public static readonly RoutedEvent ColourMapChangedEvent =
@@ -68,23 +61,23 @@ namespace IronPlot
 
         void RaiseColourMapChangedEvent()
         {
-            RoutedEventArgs newEventArgs = new RoutedEventArgs(ColourBar.ColourMapChangedEvent);
+            var newEventArgs = new RoutedEventArgs(ColourMapChangedEvent);
             RaiseEvent(newEventArgs);
         }
 
         public ColourBar(ColourMap colourMap)
         {
             InitializeComponent();
-            this.colourMap = colourMap;
-            colourBarPanel = new ColourBarPanel();
-            image = new FalseColourImage(new Rect(0, Min, 1, Max), MathHelper.Counter(1, colourMap.Length), false);
-            colourBarPanel.plotItems.Add(image);
-            image.ColourMap = colourMap;
-            colourBarPanel.Margin = new Thickness(0, 0, 5, 0);
-            this.grid.Children.Add(colourBarPanel);
-            colourMapUpdateTimer = new DispatcherTimer();
-            colourMapUpdateTimer.Interval = new TimeSpan(1000); // 1/10 s
-            colourMapUpdateTimer.Tick += OnColourMapUpdateTimerElapsed;
+            ColourMap = colourMap;
+            ColourBarPanel = new ColourBarPanel();
+            _image = new FalseColourImage(new Rect(0, Min, 1, Max), MathHelper.Counter(1, colourMap.Length), false);
+            ColourBarPanel.plotItems.Add(_image);
+            _image.ColourMap = colourMap;
+            ColourBarPanel.Margin = new Thickness(0, 0, 5, 0);
+            Grid.Children.Add(ColourBarPanel);
+            _colourMapUpdateTimer = new DispatcherTimer {Interval = new TimeSpan(1000)};
+            // 1/10 s
+            _colourMapUpdateTimer.Tick += OnColourMapUpdateTimerElapsed;
             AddSliders();
             AddContextMenu();
             FocusVisualStyle = null;
@@ -92,148 +85,142 @@ namespace IronPlot
 
         protected void AddSliders()
         {
-            interpolationPoints = (double[])colourMap.InterpolationPoints.Clone();
-            sliderList = new List<Slider>();
-            byte[,] colourMapArray = colourMap.ToByteArray();
-            colourBarPanel.RemoveSliders();
-            for (int i = 1; i < colourMap.InterpolationPoints.Length - 1; ++i)
+            _interpolationPoints = (double[])ColourMap.InterpolationPoints.Clone();
+            _sliderList = new List<Slider>();
+            var colourMapArray = ColourMap.ToByteArray();
+            ColourBarPanel.RemoveSliders();
+            for (var i = 1; i < ColourMap.InterpolationPoints.Length - 1; ++i)
             {
-                Slider slider = new Slider();
+                var slider = new Slider();
                 slider.Orientation = Orientation.Vertical;
                 slider.VerticalAlignment = VerticalAlignment.Stretch;
                 slider.Minimum = 0.0;                
                 slider.Maximum = 1.0;
-                slider.ValueChanged += new RoutedPropertyChangedEventHandler<double>(slider_ValueChanged);
-                sliderList.Add(slider);
-                slider.Value = colourMap.InterpolationPoints[i];
-                int index = (int)(slider.Value * (double)(colourMap.Length - 1));
+                slider.ValueChanged += slider_ValueChanged;
+                _sliderList.Add(slider);
+                slider.Value = ColourMap.InterpolationPoints[i];
+                var index = (int)(slider.Value * (ColourMap.Length - 1));
                 slider.Foreground = new SolidColorBrush
                     (Color.FromRgb(colourMapArray[index, 1], colourMapArray[index, 2], colourMapArray[index, 3]));
-                slider.Template = (ControlTemplate)(this.Resources["colourBarVerticalSlider"]);
+                slider.Template = (ControlTemplate)(Resources["colourBarVerticalSlider"]);
             }
-            colourBarPanel.AddSliders(sliderList);
+            ColourBarPanel.AddSliders(_sliderList);
         }
 
         protected void slider_ValueChanged(object obj, RoutedPropertyChangedEventArgs<double> args)
         {
-            int index = sliderList.IndexOf((Slider)obj);
-            if (index < (sliderList.Count - 1))
+            var index = _sliderList.IndexOf((Slider)obj);
+            if (index < (_sliderList.Count - 1))
             {
-                if (args.NewValue > sliderList[index + 1].Value)
+                if (args.NewValue > _sliderList[index + 1].Value)
                 {
-                    ((Slider)obj).Value = sliderList[index + 1].Value;
+                    ((Slider)obj).Value = _sliderList[index + 1].Value;
                     args.Handled = true;
                 }
             }
             if (index > 0)
             {
-                if (args.NewValue < sliderList[index - 1].Value)
+                if (args.NewValue < _sliderList[index - 1].Value)
                 {
-                    ((Slider)obj).Value = sliderList[index - 1].Value;
+                    ((Slider)obj).Value = _sliderList[index - 1].Value;
                     args.Handled = true;
                 }
             }
-            interpolationPoints.SetValue(((Slider)obj).Value, index + 1);
-            colourMapUpdateTimer.Start();
+            _interpolationPoints.SetValue(((Slider)obj).Value, index + 1);
+            _colourMapUpdateTimer.Start();
             RaiseColourMapChangedEvent();
         }
 
         private void OnColourMapUpdateTimerElapsed(object sender, EventArgs e)
         {
-            if (updateInProgress)
+            if (_updateInProgress)
             {
-                colourMapUpdateTimer.Start();
+                _colourMapUpdateTimer.Start();
                 return;
             }
-            colourMapUpdateTimer.Stop();
-            updateInProgress = true;
-            object state = new object();
-            ThreadPool.QueueUserWorkItem(new WaitCallback(UpdateColourMapAndBar), (object)state);
+            _colourMapUpdateTimer.Stop();
+            _updateInProgress = true;
+            var state = new object();
+            ThreadPool.QueueUserWorkItem(UpdateColourMapAndBar, state);
         }
 
         private void UpdateColourMapAndBar(Object state)    
         {
-            int i = 0;
-            foreach (double value in interpolationPoints)
+            var i = 0;
+            foreach (var value in _interpolationPoints)
             {
-                colourMap.InterpolationPoints[i] = value;
+                ColourMap.InterpolationPoints[i] = value;
                 ++i;
             }
-            colourMap.UpdateColourMap();
-            image.OnColourMapChanged(null, new RoutedEventArgs());
-            updateInProgress = false;
+            ColourMap.UpdateColourMap();
+            _image.OnColourMapChanged(null, new RoutedEventArgs());
+            _updateInProgress = false;
         }
 
         protected void AddContextMenu()
         {
-            ContextMenu mainMenu = new ContextMenu();
+            var mainMenu = new ContextMenu();
 
-            MenuItem item1 = new MenuItem();
-            item1.Header = "Colourmap";
+            var item1 = new MenuItem {Header = "Colourmap"};
             mainMenu.Items.Add(item1);
 
             //MenuItem item2 = new MenuItem();
             //item2.Header = "Print...";
             //mainMenu.Items.Add(item2);
 
-            MenuItem item1a = new MenuItem();
-            item1a.Header = "Jet";
-            item1.Items.Add(item1a);
-            item1a.Click += Jet;
+            var item1A = new MenuItem {Header = "Jet"};
+            item1.Items.Add(item1A);
+            item1A.Click += Jet;
 
-            MenuItem item1b = new MenuItem();
-            item1b.Header = "HSV";
-            item1.Items.Add(item1b);
-            item1b.Click += HSV;
+            var item1B = new MenuItem {Header = "HSV"};
+            item1.Items.Add(item1B);
+            item1B.Click += Hsv;
 
-            MenuItem item1c = new MenuItem();
-            item1c.Header = "Gray";
-            item1.Items.Add(item1c);
-            item1c.Click += Gray;
+            var item1C = new MenuItem {Header = "Gray"};
+            item1.Items.Add(item1C);
+            item1C.Click += Gray;
 
-            MenuItem item2 = new MenuItem();
-            item2.Header = "Show/Hide handles";
+            var item2 = new MenuItem {Header = "Show/Hide handles"};
             mainMenu.Items.Add(item2);
             item2.Click += ShowHideHandles;
 
-            this.ContextMenu = mainMenu;
+            ContextMenu = mainMenu;
         }
 
         private void ShowHideHandles(object sender, EventArgs args)
         {
-            foreach (Slider slider in colourBarPanel.sliderList)
-            {
-                if (slider.Visibility == Visibility.Visible) slider.Visibility = Visibility.Collapsed;
-                else slider.Visibility = Visibility.Visible;
-            }
-            colourBarPanel.InvalidateMeasure();
+            foreach (var slider in ColourBarPanel.SliderList)
+                slider.Visibility = slider.Visibility == Visibility.Visible
+                    ? Visibility.Collapsed
+                    : Visibility.Visible;
+            ColourBarPanel.InvalidateMeasure();
         }
 
         private void Gray(object sender, EventArgs args)
         {
-            colourMap.Gray();
+            ColourMap.Gray();
             ResetHandles();
         }
 
         private void Jet(object sender, EventArgs args)
         {
-            colourMap.Jet();
+            ColourMap.Jet();
             ResetHandles();
         }
 
-        private void HSV(object sender, EventArgs args)
+        private void Hsv(object sender, EventArgs args)
         {
-            colourMap.HSV();
+            ColourMap.Hsv();
             ResetHandles();
         }
 
         private void ResetHandles()
         {
-            colourMap.UpdateColourMap();
+            ColourMap.UpdateColourMap();
             AddSliders();
-            colourMapUpdateTimer.Start();
+            _colourMapUpdateTimer.Start();
             RaiseColourMapChangedEvent();
-            colourBarPanel.InvalidateMeasure();
+            ColourBarPanel.InvalidateMeasure();
         }
     }
 }

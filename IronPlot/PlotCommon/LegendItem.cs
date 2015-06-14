@@ -1,13 +1,6 @@
 ﻿using System;
-using System.Collections;
-using System.Collections.ObjectModel;
-using System.Collections.Specialized;
-using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Media;
 
 namespace IronPlot
 {
@@ -27,7 +20,7 @@ namespace IronPlot
         
         protected static void OnTitlePropertyChanged(DependencyObject obj, DependencyPropertyChangedEventArgs e)
         {
-            Legend parent = LogicalTreeHelper.GetParent(obj) as Legend;
+            var parent = LogicalTreeHelper.GetParent(obj) as Legend;
             if (parent != null) parent.UpdateLegendVisibility();
         }
 
@@ -57,14 +50,5 @@ namespace IronPlot
         }
 
 #endif
-        /// <summary>
-        /// Initializes a new instance of the LegendItem class.
-        /// </summary>
-        public LegendItem()
-        {
-#if SILVERLIGHT
-            this.DefaultStyleKey = typeof(LegendItem);
-#endif
-        }
     }
 }

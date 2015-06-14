@@ -1,11 +1,11 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+using System.Windows;
+using System.Windows.Media;
 using SharpDX;
 using SharpDX.Direct2D1;
-using System.Windows;
-using Brushes = System.Windows.Media.Brushes;
+using Brush = System.Windows.Media.Brush;
+using Geometry = SharpDX.Direct2D1.Geometry;
+using SolidColorBrush = System.Windows.Media.SolidColorBrush;
 
 namespace IronPlot
 {
@@ -19,12 +19,12 @@ namespace IronPlot
     {
         public static readonly DependencyProperty FillProperty =
             DependencyProperty.Register("Fill",
-            typeof(System.Windows.Media.Brush), typeof(DirectPath),
+            typeof(Brush), typeof(DirectPath),
             new PropertyMetadata(Brushes.Transparent));
 
         public static readonly DependencyProperty StrokeProperty =
             DependencyProperty.Register("Stroke",
-            typeof(System.Windows.Media.Brush), typeof(DirectPath),
+            typeof(Brush), typeof(DirectPath),
             new PropertyMetadata(Brushes.Black, OnStrokePropertyChanged));
 
         public static readonly DependencyProperty StrokeThicknessProperty =
@@ -46,22 +46,22 @@ namespace IronPlot
             get { return (QuickStrokeDash)GetValue(QuickStrokeDashProperty); }
         }
 
-        public System.Windows.Media.Brush Fill
+        public Brush Fill
         {
             set
             {
                 SetValue(FillProperty, value);
             }
-            get { return (System.Windows.Media.Brush)GetValue(FillProperty); }
+            get { return (Brush)GetValue(FillProperty); }
         }
 
-        public System.Windows.Media.Brush Stroke
+        public Brush Stroke
         {
             set
             {
                 SetValue(StrokeProperty, value);
             }
-            get { return (System.Windows.Media.Brush)GetValue(StrokeProperty); }
+            get { return (Brush)GetValue(StrokeProperty); }
         }
 
         public double StrokeThickness
@@ -75,96 +75,89 @@ namespace IronPlot
 
         private static void OnStrokePropertyChanged(DependencyObject obj, DependencyPropertyChangedEventArgs e)
         {
-            DirectPath localDirectPath = (DirectPath)obj;
-            localDirectPath.SetBrush(((System.Windows.Media.SolidColorBrush)e.NewValue).Color);
+            var localDirectPath = (DirectPath)obj;
+            localDirectPath.SetBrush(((SolidColorBrush)e.NewValue).Color);
         }
 
-        DirectImage directImage;
+        DirectImage _directImage;
         
-        Geometry geometry;
+        Geometry _geometry;
         internal Geometry Geometry
         { 
-            get { return geometry; }
+            get { return _geometry; }
             set 
             { 
-                if (geometry != null) geometry.Dispose(); 
-                this.geometry = value; 
+                if (_geometry != null) _geometry.Dispose(); 
+                _geometry = value; 
             }
         }
 
-        Brush brush;
-        internal Brush Brush
-        {
-            get { return brush; }
-            //set
-            //{
-            //    brush.Dispose();
-            //    this.brush = value;
-            //}
-        }
+        SharpDX.Direct2D1.Brush _brush;
+        internal SharpDX.Direct2D1.Brush Brush => _brush;
 
-        Brush fillBrush;
-        internal Brush FillBrush
-        {
-            get { return fillBrush; }
-        }
+        SharpDX.Direct2D1.Brush _fillBrush;
+        internal SharpDX.Direct2D1.Brush FillBrush => _fillBrush;
 
         public Factory Factory
         {
-            get { if (directImage != null) return directImage.RenderTarget.Factory; else return null; }
+            get
+            {
+                if (_directImage != null) return _directImage.RenderTarget.Factory;
+                return null;
+            }
         }
 
         public DirectImage DirectImage
         {
-            get { return directImage; }
+            get { return _directImage; }
             set
             {
-                directImage = value;
+                _directImage = value;
             }
         }
 
-        private void SetBrush(System.Windows.Media.Color colour)
+        private void SetBrush(Color colour)
         {
-            if (brush != null) brush.Dispose();
-            if (directImage != null) brush = new SolidColorBrush(directImage.RenderTarget, new Color4(colour.ScR, colour.ScG, colour.ScB, colour.ScA));
+            if (_brush != null) _brush.Dispose();
+            if (_directImage != null) _brush = new SharpDX.Direct2D1.SolidColorBrush(_directImage.RenderTarget, new Color4(colour.ScR, colour.ScG, colour.ScB, colour.ScA));
         }
 
-        private void SetFillBrush(System.Windows.Media.Color colour)
+        private void SetFillBrush(Color colour)
         {
-            if (fillBrush != null) fillBrush.Dispose();
-            if (directImage != null) fillBrush = new SolidColorBrush(directImage.RenderTarget, new Color4(colour.ScR, colour.ScG, colour.ScB, colour.ScA));
+            if (_fillBrush != null) _fillBrush.Dispose();
+            if (_directImage != null) _fillBrush = new SharpDX.Direct2D1.SolidColorBrush(_directImage.RenderTarget, new Color4(colour.ScR, colour.ScG, colour.ScB, colour.ScA));
         }
 
         public DirectPath()
         {
-            this.geometry = null;
-            this.directImage = null;
+            _geometry = null;
+            _directImage = null;
         }
 
         internal void DisposeDisposables()
         {
-            if (brush != null)
+            if (_brush != null)
             {
-                brush.Dispose();
-                brush = null;
+                _brush.Dispose();
+                _brush = null;
             }
-            if (fillBrush != null)
+            if (_fillBrush != null)
             {
-                fillBrush.Dispose();
-                fillBrush = null;
+                _fillBrush.Dispose();
+                _fillBrush = null;
             }
-            if (geometry != null)
+            if (_geometry != null)
             {
-                geometry.Dispose();
-                geometry = null;
+                _geometry.Dispose();
+                _geometry = null;
             }
         }
 
         internal void RecreateDisposables()
         {
             DisposeDisposables();
-            SetBrush(((System.Windows.Media.SolidColorBrush)GetValue(StrokeProperty)).Color);
-            SetFillBrush(((System.Windows.Media.SolidColorBrush)GetValue(FillProperty)).Color);
+            SetBrush(((SolidColorBrush)GetValue(StrokeProperty)).Color);
+            SetFillBrush(((SolidColorBrush)GetValue(FillProperty)).Color);
             // Geometry will be re-created when the containing Direct2DControl is next Arranged.
         }
 

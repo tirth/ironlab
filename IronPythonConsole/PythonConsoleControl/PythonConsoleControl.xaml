@@ -8,6 +8,5 @@
     <!-- 
 	Copyright (c) 2010 Joe Moorhouse
     -->
-    <Grid Name="grid">            
-    </Grid>
+    <Grid Name="Grid" />
 </UserControl>

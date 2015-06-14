@@ -3,21 +3,13 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
+using System.Threading;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
 using System.Windows.Shapes;
-using System.Windows.Xps;
-using System.Printing;
-using System.Threading;
 using System.Windows.Threading;
-using System.ComponentModel;
+
 #if ILNumerics
 using ILNumerics;
 using ILNumerics.Storage;
@@ -28,28 +20,28 @@ namespace IronPlot
 {    
     public class FalseColourImage : Plot2DItem
     {
-        ColourBar colourBar = null;
-        IEnumerable<double> underlyingData;
+        ColourBar _colourBar;
+        readonly IEnumerable<double> _underlyingData;
 
-        int width;
-        int height;
+        readonly int _width;
+        readonly int _height;
 
-        UInt16[] indices;
-        ColourMap colourMap;
-        int[] updateColourMap;
-        Path imageRectangle;
-        ImageBrush imageBrush;
-        WriteableBitmap writeableBitmap;
+        UInt16[] _indices;
+        ColourMap _colourMap;
+        int[] _updateColourMap;
+        Path _imageRectangle;
+        ImageBrush _imageBrush;
+        WriteableBitmap _writeableBitmap;
         // The bounds of the rectangle in graph coordinates
-        volatile bool updateInProgress = false;
-        DispatcherTimer colourMapUpdateTimer;
-        IntPtr backBuffer;
+        volatile bool _updateInProgress;
+        DispatcherTimer _colourMapUpdateTimer;
+        IntPtr _backBuffer;
         private delegate void AfterUpdateCallback();
 
         internal override void BeforeArrange()
         {
             // Ensure that transform is updated with the latest axes values. 
-            imageRectangle.RenderTransform = Axis2D.GraphToCanvasLinear(xAxis, yAxis); 
+            _imageRectangle.RenderTransform = Axis2D.GraphToCanvasLinear(xAxis, yAxis); 
         }
 
         protected override void OnHostChanged(PlotPanel host)
@@ -60,7 +52,7 @@ namespace IronPlot
                 try
                 {
                     host.Canvas.Children.Remove(Rectangle);
-                    if (colourBar != null) host.Annotations.Remove(colourBar);
+                    if (_colourBar != null) host.Annotations.Remove(_colourBar);
                 }
                 catch (Exception) 
                 { 
@@ -68,35 +60,32 @@ namespace IronPlot
                 }
             }
             this.host = host;
-            if (colourBar != null)
+            if (_colourBar != null)
             {
-                host.Annotations.Add(colourBar);
-                colourBar.ColourMapChanged += new RoutedEventHandler(OnColourMapChanged);
+                host.Annotations.Add(_colourBar);
+                _colourBar.ColourMapChanged += OnColourMapChanged;
             }
-            colourMapUpdateTimer.Tick += OnColourMapUpdateTimerElapsed;
+            _colourMapUpdateTimer.Tick += OnColourMapUpdateTimerElapsed;
             host.Canvas.Children.Add(Rectangle);
         }
         
         // a FalseColourImage creates a UInt16[]
         // The UInt16[] contains indexed pixels that are mapped to colours 
         // via the colourMap
-        bool useILArray = false;
+        readonly bool _useIlArray = false;
 #if ILNumerics
         ILArray<double> underlyingILArrayData;
 #endif
 
 
-        public Path Rectangle
-        {
-            get { return imageRectangle; }
-        }
+        public Path Rectangle => _imageRectangle;
 
         public ColourMap ColourMap
         {
-            get { return colourMap; }
+            get { return _colourMap; }
             set { 
-                colourMap = value;
-                colourMapUpdateTimer.Start();    
+                _colourMap = value;
+                _colourMapUpdateTimer.Start();    
             }
         }
 
@@ -110,60 +99,54 @@ namespace IronPlot
         {
             set
             {
-                SetValue(BoundsProperty, (Rect)value);
+                SetValue(BoundsProperty, value);
             }
             get { return (Rect)GetValue(BoundsProperty); }
         }
 
-        public override Rect TightBounds
-        {
-            get { return (Rect)GetValue(BoundsProperty); }
-        }
+        public override Rect TightBounds => (Rect)GetValue(BoundsProperty);
 
-        public override Rect PaddedBounds
-        {
-            get { return (Rect)GetValue(BoundsProperty); }
-        }
+        public override Rect PaddedBounds => (Rect)GetValue(BoundsProperty);
 
         protected static void OnBoundsChanged(DependencyObject obj, DependencyPropertyChangedEventArgs e)
         {
-            Rect bounds = (Rect)e.NewValue;
+            var bounds = (Rect)e.NewValue;
             Geometry geometry = new RectangleGeometry(bounds);
-            ((FalseColourImage)obj).imageRectangle.Data = geometry;
+            ((FalseColourImage)obj)._imageRectangle.Data = geometry;
         }
 
         public FalseColourImage(double[,] underlyingData)
         {
-            this.underlyingData = underlyingData.ArrayEnumerator(EnumerationOrder2D.RowMajor);
-            width = underlyingData.GetLength(0);
-            height = underlyingData.GetLength(1);
+            _underlyingData = underlyingData.ArrayEnumerator(EnumerationOrder2D.RowMajor);
+            _width = underlyingData.GetLength(0);
+            _height = underlyingData.GetLength(1);
             Initialize(true);
         }
 
         public FalseColourImage(IEnumerable<object> underlyingData)
         {
-            Array array = GeneralArray.ToDoubleArray(underlyingData);
-            this.underlyingData = ((double[,])array).ArrayEnumerator(EnumerationOrder2D.ColumnMajor);
-            width = array.GetLength(0);
-            height = array.GetLength(1);
+            var array = GeneralArray.ToDoubleArray(underlyingData);
+            _underlyingData = ((double[,])array).ArrayEnumerator(EnumerationOrder2D.ColumnMajor);
+            _width = array.GetLength(0);
+            _height = array.GetLength(1);
             Initialize(true);
         }
 
         internal FalseColourImage(Rect bounds, double[,] underlyingData, bool newColourBar)
         {
-            this.underlyingData = underlyingData.ArrayEnumerator(EnumerationOrder2D.ColumnMajor);
-            width = underlyingData.GetLength(0);
-            height = underlyingData.GetLength(1);
+            _underlyingData = underlyingData.ArrayEnumerator(EnumerationOrder2D.ColumnMajor);
+            _width = underlyingData.GetLength(0);
+            _height = underlyingData.GetLength(1);
             Initialize(newColourBar);
             Bounds = bounds;
         }
 
         internal FalseColourImage(Rect bounds, IEnumerable<object> underlyingData, bool newColourBar)
         {
-            Array array = GeneralArray.ToDoubleArray(underlyingData);
-            this.underlyingData = ((double[,])array).ArrayEnumerator(EnumerationOrder2D.ColumnMajor);
-            width = array.GetLength(0);
-            height = array.GetLength(1);
+            var array = GeneralArray.ToDoubleArray(underlyingData);
+            _underlyingData = ((double[,])array).ArrayEnumerator(EnumerationOrder2D.ColumnMajor);
+            _width = array.GetLength(0);
+            _height = array.GetLength(1);
             Initialize(newColourBar);
             Bounds = bounds;
         }
@@ -217,27 +200,27 @@ namespace IronPlot
 
         protected void Initialize(bool newColourBar)
         {
-            colourMapUpdateTimer = new DispatcherTimer();
-            colourMapUpdateTimer.Interval = TimeSpan.FromSeconds(0.2);
-            colourMap = new ColourMap(ColourMapType.Jet, 256);
-            imageRectangle = new Path();
+            _colourMapUpdateTimer = new DispatcherTimer();
+            _colourMapUpdateTimer.Interval = TimeSpan.FromSeconds(0.2);
+            _colourMap = new ColourMap(ColourMapType.Jet, 256);
+            _imageRectangle = new Path();
             Geometry geometry = new RectangleGeometry(bounds);
-            imageRectangle.Data = geometry;
-            RenderOptions.SetBitmapScalingMode(imageRectangle, BitmapScalingMode.NearestNeighbor);
+            _imageRectangle.Data = geometry;
+            RenderOptions.SetBitmapScalingMode(_imageRectangle, BitmapScalingMode.NearestNeighbor);
 #if ILNumerics
             if (useILArray)
             {
                 indices = UnderlyingILArrayToIndexArray(colourMap.Length);
             }
 #endif
-            if (!useILArray) indices = UnderlyingToIndexArray(colourMap.Length);
-            writeableBitmap = new WriteableBitmap(IndexArrayToBitmapSource());
-            imageBrush = new ImageBrush(writeableBitmap);
-            imageRectangle.Fill = imageBrush;
-            Bounds = new Rect(0, 0, writeableBitmap.PixelWidth, writeableBitmap.PixelHeight);
+            if (!_useIlArray) _indices = UnderlyingToIndexArray(_colourMap.Length);
+            _writeableBitmap = new WriteableBitmap(IndexArrayToBitmapSource());
+            _imageBrush = new ImageBrush(_writeableBitmap);
+            _imageRectangle.Fill = _imageBrush;
+            Bounds = new Rect(0, 0, _writeableBitmap.PixelWidth, _writeableBitmap.PixelHeight);
             if (newColourBar)
             {
-                colourBar = new ColourBar(ColourMap);
+                _colourBar = new ColourBar(ColourMap);
 #if ILNumerics
                 if (useILArray)
                 {
@@ -245,25 +228,25 @@ namespace IronPlot
                     colourBar.Max = underlyingILArrayData.MaxValue;
                 }
 #endif
-                if (!useILArray)
+                if (!_useIlArray)
                 {
-                    colourBar.Min = underlyingData.Min();
-                    colourBar.Max = underlyingData.Max();
+                    _colourBar.Min = _underlyingData.Min();
+                    _colourBar.Max = _underlyingData.Max();
                 }
             }
         }
 
-        public static UInt16[] IEnumerableToIndexArray(IEnumerable<double> data, int width, int height, int nIndices)
+        public static UInt16[] EnumerableToIndexArray(IEnumerable<double> data, int width, int height, int nIndices)
         {
-            double max = data.Max();
-            double min = data.Min();
-            double Scale = (nIndices - 1) / (max - min);
-            int count = width * height;
-            int index = 0;
-            UInt16[] indices = new UInt16[count];
-            foreach (double value in data)
+            var max = data.Max();
+            var min = data.Min();
+            var scale = (nIndices - 1) / (max - min);
+            var count = width * height;
+            var index = 0;
+            var indices = new UInt16[count];
+            foreach (var value in data)
             {
-                indices[index] = (UInt16)((value - min) * Scale);
+                indices[index] = (UInt16)((value - min) * scale);
                 index++;
             }
             return indices;
@@ -271,15 +254,15 @@ namespace IronPlot
 
         public UInt16[] UnderlyingToIndexArray(int nIndices)
         {
-            double max = underlyingData.Max();
-            double min = underlyingData.Min();
-            double Scale = (nIndices - 1) / (max - min);
-            int count = width * height; 
-            int index = 0;
-            UInt16[] indices = new UInt16[count];
-            foreach (double value in underlyingData)
+            var max = _underlyingData.Max();
+            var min = _underlyingData.Min();
+            var scale = (nIndices - 1) / (max - min);
+            var count = _width * _height; 
+            var index = 0;
+            var indices = new UInt16[count];
+            foreach (var value in _underlyingData)
             {
-                indices[index] = (UInt16)((value - min) * Scale);
+                indices[index] = (UInt16)((value - min) * scale);
                 index++;
             }
             return indices;
@@ -365,35 +348,35 @@ namespace IronPlot
        
         public void OnColourMapChanged(object sender, RoutedEventArgs e)
         {
-            colourMapUpdateTimer.Start();           
+            _colourMapUpdateTimer.Start();           
         }
         
         private void OnColourMapUpdateTimerElapsed(object sender, EventArgs e)
         {
-            if (updateInProgress)
+            if (_updateInProgress)
             {
-                colourMapUpdateTimer.Start();
+                _colourMapUpdateTimer.Start();
                 return;
             }
-            updateColourMap = colourMap.ToIntArray();
-            colourMapUpdateTimer.Stop();
-            object state = new object();
-            writeableBitmap.Lock();
-            backBuffer = writeableBitmap.BackBuffer;
-            updateInProgress = true;
-            ThreadPool.QueueUserWorkItem(new WaitCallback(UpdateWriteableBitmap), (object)state);
+            _updateColourMap = _colourMap.ToIntArray();
+            _colourMapUpdateTimer.Stop();
+            var state = new object();
+            _writeableBitmap.Lock();
+            _backBuffer = _writeableBitmap.BackBuffer;
+            _updateInProgress = true;
+            ThreadPool.QueueUserWorkItem(UpdateWriteableBitmap, state);
         }
 
         private BitmapSource IndexArrayToBitmapSource()
         {
             // Define parameters used to create the BitmapSource.
-            PixelFormat pf = PixelFormats.Bgr32;
-            int bytes = (pf.BitsPerPixel + 7) / 8;
-            int rawStride = (width * bytes);
-            byte[] rawImage = new byte[rawStride * height];
-            int byteIndex = 0;
-            byte[,] cmap = colourMap.ToByteArray();
-            foreach (UInt16 magnitude in indices)
+            var pf = PixelFormats.Bgr32;
+            var bytes = (pf.BitsPerPixel + 7) / 8;
+            var rawStride = (_width * bytes);
+            var rawImage = new byte[rawStride * _height];
+            var byteIndex = 0;
+            var cmap = _colourMap.ToByteArray();
+            foreach (var magnitude in _indices)
             {
                 rawImage[byteIndex] = cmap[magnitude, 3];
                 rawImage[byteIndex + 1] = cmap[magnitude, 2];
@@ -402,7 +385,7 @@ namespace IronPlot
                 byteIndex += bytes;
             }
             // Create a BitmapSource.
-            BitmapSource bitmap = BitmapSource.Create(width, height,
+            var bitmap = BitmapSource.Create(_width, _height,
                 96, 96, pf, null,
                 rawImage, rawStride);
 
@@ -413,24 +396,24 @@ namespace IronPlot
         {
             unsafe
             {
-                int* pBackBuffer = (int*)backBuffer;
-                PixelFormat pf = PixelFormats.Bgr32;
-                int bytes = (pf.BitsPerPixel + 7) / 8;
-                for (int i = 0; i < indices.Length; ++i)
+                var pBackBuffer = (int*)_backBuffer;
+                var pf = PixelFormats.Bgr32;
+                var bytes = (pf.BitsPerPixel + 7) / 8;
+                for (var i = 0; i < _indices.Length; ++i)
                 {
-                    *pBackBuffer = updateColourMap[indices[i]];
+                    *pBackBuffer = _updateColourMap[_indices[i]];
                     pBackBuffer++;
                 }
             }
-            Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background,
+            Dispatcher.BeginInvoke(DispatcherPriority.Background,
                 new AfterUpdateCallback(AfterUpdateWriteableBitmap));
         }
 
         private void AfterUpdateWriteableBitmap()
         {
-            writeableBitmap.AddDirtyRect(new Int32Rect(0, 0, writeableBitmap.PixelWidth, writeableBitmap.PixelHeight));
-            writeableBitmap.Unlock();
-            updateInProgress = false;
+            _writeableBitmap.AddDirtyRect(new Int32Rect(0, 0, _writeableBitmap.PixelWidth, _writeableBitmap.PixelHeight));
+            _writeableBitmap.Unlock();
+            _updateInProgress = false;
         }
     }
 }

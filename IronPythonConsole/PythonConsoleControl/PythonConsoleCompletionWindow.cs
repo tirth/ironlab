@@ -1,22 +1,15 @@
 ﻿// Copyright (c) 2010 Joe Moorhouse
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
-using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Threading;
+using ICSharpCode.AvalonEdit.CodeCompletion;
 using ICSharpCode.AvalonEdit.Document;
 using ICSharpCode.AvalonEdit.Editing;
 using ICSharpCode.AvalonEdit.Rendering;
-using ICSharpCode.AvalonEdit.CodeCompletion;
-using System.Reflection;
-using System.ComponentModel;
 
 namespace PythonConsoleControl
 {
@@ -27,20 +20,17 @@ namespace PythonConsoleControl
     /// </summary>
     public class PythonConsoleCompletionWindow : CompletionWindowBase
     {
-        readonly CompletionList completionList = new CompletionList();
-        ToolTip toolTip = new ToolTip();
-        DispatcherTimer updateDescription;
-        TimeSpan updateDescriptionInterval;
-        PythonTextEditor textEditor;
-        PythonConsoleCompletionDataProvider completionDataProvider;
+        readonly CompletionList _completionList = new CompletionList();
+        ToolTip _toolTip = new ToolTip();
+        readonly DispatcherTimer _updateDescription;
+        readonly TimeSpan _updateDescriptionInterval;
+        readonly PythonTextEditor _textEditor;
+        readonly PythonConsoleCompletionDataProvider _completionDataProvider;
 
         /// <summary>
         /// Gets the completion list used in this completion window.
         /// </summary>
-        public CompletionList CompletionList
-        {
-            get { return completionList; }
-        }
+        public CompletionList CompletionList => _completionList;
 
         /// <summary>
         /// Creates a new code completion window.
@@ -49,32 +39,32 @@ namespace PythonConsoleControl
             : base(textArea)
         {
             // keep height automatic
-            this.completionDataProvider = textEditor.CompletionProvider;
-            this.textEditor = textEditor;
-            this.CloseAutomatically = true;
-            this.SizeToContent = SizeToContent.Height;
-            this.MaxHeight = 300;
-            this.Width = 175;
-            this.Content = completionList;
+            _completionDataProvider = textEditor.CompletionProvider;
+            _textEditor = textEditor;
+            CloseAutomatically = true;
+            SizeToContent = SizeToContent.Height;
+            MaxHeight = 300;
+            Width = 175;
+            Content = _completionList;
             // prevent user from resizing window to 0x0
-            this.MinHeight = 15;
-            this.MinWidth = 30;
+            MinHeight = 15;
+            MinWidth = 30;
 
-            toolTip.PlacementTarget = this;
-            toolTip.Placement = PlacementMode.Right;
-            toolTip.Closed += toolTip_Closed;
+            _toolTip.PlacementTarget = this;
+            _toolTip.Placement = PlacementMode.Right;
+            _toolTip.Closed += toolTip_Closed;
 
-            completionList.InsertionRequested += completionList_InsertionRequested;
-            completionList.SelectionChanged += completionList_SelectionChanged;
+            _completionList.InsertionRequested += completionList_InsertionRequested;
+            _completionList.SelectionChanged += completionList_SelectionChanged;
             AttachEvents();
 
-            updateDescription = new DispatcherTimer();
-            updateDescription.Tick += new EventHandler(completionList_UpdateDescription);
-            updateDescriptionInterval = TimeSpan.FromSeconds(0.3);
+            _updateDescription = new DispatcherTimer();
+            _updateDescription.Tick += completionList_UpdateDescription;
+            _updateDescriptionInterval = TimeSpan.FromSeconds(0.3);
 
-            EventInfo eventInfo = typeof(TextView).GetEvent("ScrollOffsetChanged");
-            Delegate methodDelegate = Delegate.CreateDelegate(eventInfo.EventHandlerType, (this as CompletionWindowBase), "TextViewScrollOffsetChanged");
-            eventInfo.RemoveEventHandler(this.TextArea.TextView, methodDelegate);
+            var eventInfo = typeof(TextView).GetEvent("ScrollOffsetChanged");
+            var methodDelegate = Delegate.CreateDelegate(eventInfo.EventHandlerType, this, "TextViewScrollOffsetChanged");
+            eventInfo.RemoveEventHandler(TextArea.TextView, methodDelegate);
         }
 
         #region ToolTip handling
@@ -83,29 +73,28 @@ namespace PythonConsoleControl
             // Clear content after tooltip is closed.
             // We cannot clear is immediately when setting IsOpen=false
             // because the tooltip uses an animation for closing.
-            if (toolTip != null)
-                toolTip.Content = null;
+            if (_toolTip != null)
+                _toolTip.Content = null;
         }
 
         void completionList_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            var item = completionList.SelectedItem;
+            var item = _completionList.SelectedItem;
             if (item == null)
             {
-                updateDescription.Stop();
-                return;
+                _updateDescription.Stop();
             }
             else
             {
-                updateDescription.Interval = updateDescriptionInterval;
-                updateDescription.Start();
+                _updateDescription.Interval = _updateDescriptionInterval;
+                _updateDescription.Start();
             }
         }
 
         void completionList_UpdateDescription(Object sender, EventArgs e)
         {
-            updateDescription.Stop();
-            textEditor.UpdateCompletionDescription();
+            _updateDescription.Stop();
+            _textEditor.UpdateCompletionDescription();
         }
 
         /// <summary>
@@ -113,41 +102,42 @@ namespace PythonConsoleControl
         /// </summary>
         internal void UpdateCurrentItemDescription()
         {
-            if (textEditor.StopCompletion())
+            if (_textEditor.StopCompletion())
             {
-                updateDescription.Interval = updateDescriptionInterval;
-                updateDescription.Start();
+                _updateDescription.Interval = _updateDescriptionInterval;
+                _updateDescription.Start();
                 return;
             }
-            string stub = "";
-            string item = "";
-            bool isInstance = false;
-            textEditor.textEditor.Dispatcher.Invoke(new Action(delegate()
+            var stub = "";
+            var item = "";
+            var isInstance = false;
+            _textEditor.TextEditor.Dispatcher.Invoke(new Action(delegate
             {
-                PythonCompletionData data = (completionList.SelectedItem as PythonCompletionData);
-                if (data == null || toolTip == null)
+                var data = (_completionList.SelectedItem as PythonCompletionData);
+                if (data == null || _toolTip == null)
                     return;
                 stub = data.Stub;
                 item = data.Text;
                 isInstance = data.IsInstance;
             }));
             // Send to the completion thread to generate the description, providing callback.
-            completionDataProvider.GenerateDescription(stub, item, completionList_WriteDescription, isInstance);
+            _completionDataProvider.GenerateDescription(stub, item, completionList_WriteDescription, isInstance);
         }
 
         void completionList_WriteDescription(string description)
         {
-            textEditor.textEditor.Dispatcher.Invoke(new Action(delegate() {
-                if (toolTip != null)
+            _textEditor.TextEditor.Dispatcher.Invoke(new Action(delegate
+            {
+                if (_toolTip != null)
                 {
                     if (description != null)
                     {
-                        toolTip.Content = description;
-                        toolTip.IsOpen = true;
+                        _toolTip.Content = description;
+                        _toolTip.IsOpen = true;
                     }
                     else
                     {
-                        toolTip.IsOpen = false;
+                        _toolTip.IsOpen = false;
                     }
                 }
             }));
@@ -160,24 +150,24 @@ namespace PythonConsoleControl
             Close();
             // The window must close before Complete() is called.
             // If the Complete callback pushes stacked input handlers, we don't want to pop those when the CC window closes.
-            var item = completionList.SelectedItem;
+            var item = _completionList.SelectedItem;
             if (item != null)
-                item.Complete(this.TextArea, new AnchorSegment(this.TextArea.Document, this.StartOffset, this.EndOffset - this.StartOffset), e);
+                item.Complete(TextArea, new AnchorSegment(TextArea.Document, StartOffset, EndOffset - StartOffset), e);
         }
 
         void AttachEvents()
         {
-            this.TextArea.Caret.PositionChanged += CaretPositionChanged;
-            this.TextArea.MouseWheel += textArea_MouseWheel;
-            this.TextArea.PreviewTextInput += textArea_PreviewTextInput;
+            TextArea.Caret.PositionChanged += CaretPositionChanged;
+            TextArea.MouseWheel += textArea_MouseWheel;
+            TextArea.PreviewTextInput += textArea_PreviewTextInput;
         }
 
         /// <inheritdoc/>
         protected override void DetachEvents()
         {
-            this.TextArea.Caret.PositionChanged -= CaretPositionChanged;
-            this.TextArea.MouseWheel -= textArea_MouseWheel;
-            this.TextArea.PreviewTextInput -= textArea_PreviewTextInput;
+            TextArea.Caret.PositionChanged -= CaretPositionChanged;
+            TextArea.MouseWheel -= textArea_MouseWheel;
+            TextArea.PreviewTextInput -= textArea_PreviewTextInput;
             base.DetachEvents();
         }
 
@@ -185,10 +175,10 @@ namespace PythonConsoleControl
         protected override void OnClosed(EventArgs e)
         {
             base.OnClosed(e);
-            if (toolTip != null)
+            if (_toolTip != null)
             {
-                toolTip.IsOpen = false;
-                toolTip = null;
+                _toolTip.IsOpen = false;
+                _toolTip = null;
             }
         }
 
@@ -198,7 +188,7 @@ namespace PythonConsoleControl
             base.OnKeyDown(e);
             if (!e.Handled)
             {
-                completionList.HandleKey(e);
+                _completionList.HandleKey(e);
             }
         }
 
@@ -217,9 +207,9 @@ namespace PythonConsoleControl
 
         UIElement GetScrollEventTarget()
         {
-            if (completionList == null)
+            if (_completionList == null)
                 return this;
-            return completionList.ScrollViewer ?? completionList.ListBox ?? (UIElement)completionList;
+            return _completionList.ScrollViewer ?? _completionList.ListBox ?? (UIElement)_completionList;
         }
 
         /// <summary>
@@ -229,10 +219,7 @@ namespace PythonConsoleControl
         public bool CloseAutomatically { get; set; }
 
         /// <inheritdoc/>
-        protected override bool CloseOnFocusLost
-        {
-            get { return this.CloseAutomatically; }
-        }
+        protected override bool CloseOnFocusLost => CloseAutomatically;
 
         /// <summary>
         /// When this flag is set, code completion closes if the caret moves to the
@@ -244,8 +231,8 @@ namespace PythonConsoleControl
 
         void CaretPositionChanged(object sender, EventArgs e)
         {
-            int offset = this.TextArea.Caret.Offset;
-            if (offset == this.StartOffset)
+            var offset = TextArea.Caret.Offset;
+            if (offset == StartOffset)
             {
                 if (CloseAutomatically && CloseWhenCaretAtBeginning)
                 {
@@ -253,11 +240,11 @@ namespace PythonConsoleControl
                 }
                 else
                 {
-                    completionList.SelectItem(string.Empty);
+                    _completionList.SelectItem(string.Empty);
                 }
                 return;
             }
-            if (offset < this.StartOffset || offset > this.EndOffset)
+            if (offset < StartOffset || offset > EndOffset)
             {
                 if (CloseAutomatically)
                 {
@@ -266,10 +253,10 @@ namespace PythonConsoleControl
             }
             else
             {
-                TextDocument document = this.TextArea.Document;
+                var document = TextArea.Document;
                 if (document != null)
                 {
-                    completionList.SelectItem(document.GetText(this.StartOffset, offset - this.StartOffset));
+                    _completionList.SelectItem(document.GetText(StartOffset, offset - StartOffset));
                 }
             }
         }

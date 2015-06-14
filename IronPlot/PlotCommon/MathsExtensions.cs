@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 
 namespace IronPlot
 {
@@ -17,14 +15,14 @@ namespace IronPlot
         /// <param name="function"></param>
         public static void UpdateEach<T>(this T[] array, Func<T, T> function)
         {
-            for (int i = 0; i < array.Length; i++) { array[i] = function(array[i]); }
+            for (var i = 0; i < array.Length; i++) { array[i] = function(array[i]); }
         }
 
         public static void UpdateEach<T>(this T[,] array, Func<T, T> function)
         {
-            for (int i = 0; i < array.GetLength(0); i++)
+            for (var i = 0; i < array.GetLength(0); i++)
             {
-                for (int j = 0; j < array.GetLength(1); j++)
+                for (var j = 0; j < array.GetLength(1); j++)
                 {
                     array[i, j] = function(array[i, j]); 
                 }
@@ -39,10 +37,10 @@ namespace IronPlot
         public static T[,] Iter2<T>(this T[,] array, T[,] array2, Func<T, T, T> function)
         {
             if ((array.GetLength(0) != array.GetLength(0)) || (array.GetLength(0) != array.GetLength(0))) throw new ArgumentException("Arrays' dimensions must be identical.");
-            T[,] output = new T[array.GetLength(0), array.GetLength(1)];
-            for (int i = 0; i < array.GetLength(0); i++)
+            var output = new T[array.GetLength(0), array.GetLength(1)];
+            for (var i = 0; i < array.GetLength(0); i++)
             {
-                for (int j = 0; j < array.GetLength(1); j++)
+                for (var j = 0; j < array.GetLength(1); j++)
                 {
                     output[i, j] = function(array[i, j], array2[i, j]);
                 }
@@ -52,11 +50,11 @@ namespace IronPlot
 
         public static T[,] ToArray2D<T>(this IEnumerable<T> enumerable, int length0, int length1)
         {
-            T[,] array = new T[length0, length1];
-            IEnumerator<T> enumerator = enumerable.GetEnumerator();
-            for (int j = 0; j < length0; ++j)
+            var array = new T[length0, length1];
+            var enumerator = enumerable.GetEnumerator();
+            for (var j = 0; j < length0; ++j)
             {
-                for (int i = 0; i < length1; ++i)
+                for (var i = 0; i < length1; ++i)
                 {
                     enumerator.MoveNext();
                     array[i, j] = enumerator.Current;
@@ -68,9 +66,9 @@ namespace IronPlot
 
         public static IEnumerable<T> RepeatingEnumerator<T>(this IEnumerable<T> input, int repeatTimes)
         {
-            for (int i = 0; i < repeatTimes; ++i)
+            for (var i = 0; i < repeatTimes; ++i)
             {
-                foreach (T item in input) yield return item; 
+                foreach (var item in input) yield return item; 
             }
         }
 
@@ -85,9 +83,9 @@ namespace IronPlot
         {
             if (order == EnumerationOrder2D.RowMajor)
             {
-                for (int i = 0; i < input.GetLength(0); ++i)
+                for (var i = 0; i < input.GetLength(0); ++i)
                 {
-                    for (int j = 0; j < input.GetLength(1); ++j)
+                    for (var j = 0; j < input.GetLength(1); ++j)
                     {
                         yield return input[i, j];
                     }
@@ -95,9 +93,9 @@ namespace IronPlot
             }
             else
             {
-                for (int j = 0; j < input.GetLength(1); ++j)
+                for (var j = 0; j < input.GetLength(1); ++j)
                 {
-                    for (int i = 0; i < input.GetLength(0); ++i)
+                    for (var i = 0; i < input.GetLength(0); ++i)
                     {
                         yield return input[i, j];
                     }
@@ -107,13 +105,13 @@ namespace IronPlot
         
         public static double[] MultiplyBy(this double[] input, double multiplier)
         {
-            for (int i = 0; i < input.Length; ++i) input[i] *= multiplier;
+            for (var i = 0; i < input.Length; ++i) input[i] *= multiplier;
             return input;
         }
 
         public static double[] SumWith(this double[] input, double addition)
         {
-            for (int i = 0; i < input.Length; ++i) input[i] += addition;
+            for (var i = 0; i < input.Length; ++i) input[i] += addition;
             return input;
         }
     }

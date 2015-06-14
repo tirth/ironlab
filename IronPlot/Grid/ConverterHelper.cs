@@ -1,12 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Windows.Data;
-using System.Globalization;
 using System.ComponentModel;
-using System.Windows.Media;
 using System.Data;
+using System.Globalization;
+using System.Windows.Data;
 
 namespace IronPlot
 {
@@ -60,20 +56,20 @@ namespace IronPlot
     {
         public static DataView ArrayToView(double[,] array)
         {
-            int rows = array.GetLength(0);
-            int cols = array.GetLength(1);
+            var rows = array.GetLength(0);
+            var cols = array.GetLength(1);
 
-            DataTable table = new DataTable();
-            for (int j = 0; j < cols; ++j)
+            var table = new DataTable();
+            for (var j = 0; j < cols; ++j)
                 table.Columns.Add(new DataColumn(j.ToString(), typeof(Double)));
 
-            for (int i = 0; i < rows; ++i)
+            for (var i = 0; i < rows; ++i)
             {
-                object[] rowData = new object[cols];
-                for (int j = 0; j < cols; ++j) rowData[j] = (object)(array[i, j]);
-                DataRow row = table.LoadDataRow(rowData, false);
+                var rowData = new object[cols];
+                for (var j = 0; j < cols; ++j) rowData[j] = array[i, j];
+                var row = table.LoadDataRow(rowData, false);
             }
-            DataView view = table.DefaultView;
+            var view = table.DefaultView;
             view.AllowNew = false;
             return view;
         }

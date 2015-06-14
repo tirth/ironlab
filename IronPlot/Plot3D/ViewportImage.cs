@@ -1,17 +1,12 @@
 ﻿// Copyright (c) 2010 Joe Moorhouse
 
-using System.Collections.Generic;
-using SharpDX;
-using SharpDX.Direct3D9;
 using System;
 using System.Linq;
-using System.Reflection;
 using System.Windows;
-using System.Diagnostics;
 using System.Windows.Controls;
-using System.Windows.Media;
 using System.Windows.Media.Media3D;
-using Matrix = SharpDX.Matrix;
+using SharpDX;
+using SharpDX.Direct3D9;
 
 namespace IronPlot.Plotting3D
 {
@@ -39,55 +34,40 @@ namespace IronPlot.Plotting3D
     {
         #region Fields
 
-        Matrix world;
-        Matrix view;
-        Matrix projection;
-        Matrix cameraTransform;
-        float fov, tanSemiFOV;
+        Matrix _world;
+        Matrix _view;
+        Matrix _projection;
+        Matrix _cameraTransform;
+        float _fov, _tanSemiFov;
 
-        I2DLayer layer2D;
+        I2DLayer _layer2D;
 
-        public Matrix World
-        {
-            get { return world; }
-        }
+        public Matrix World => _world;
 
-        public Matrix View
-        {
-            get { return view; }
-        }
+        public Matrix View => _view;
 
-        public Matrix Projection
-        {
-            get { return projection; }
-        }
+        public Matrix Projection => _projection;
 
         public float Scale { get; internal set; }
 
-        public float FOV
+        public float Fov
         {
-            get { return fov; }
+            get { return _fov; }
 
             set
             {
-                fov = value;
-                tanSemiFOV = (float)Math.Tan((double)fov / 2);
+                _fov = value;
+                _tanSemiFov = (float)Math.Tan((double)_fov / 2);
             }
         }
 
-         public float TanSemiFOV
-         {
-            get { return tanSemiFOV; }
-         }
+         public float TanSemiFov => _tanSemiFov;
 
-        public I2DLayer Layer2D
-        {
-            get { return layer2D; }
-        }
+        public I2DLayer Layer2D => _layer2D;
 
         public void SetLayer2D(Canvas canvas, MatrixTransform3D modelToWorld) 
         {
-            layer2D = new SharpDXLayer2D(canvas, this, modelToWorld);
+            _layer2D = new SharpDxLayer2D(canvas, this, modelToWorld);
         }
 
         internal Viewport3D ViewPort3D { get; set; }
@@ -99,7 +79,7 @@ namespace IronPlot.Plotting3D
         public static readonly DependencyProperty ModelToWorldProperty =
             DependencyProperty.Register("ModelToWorld",
             typeof(MatrixTransform3D), typeof(ViewportImage),
-            new PropertyMetadata((MatrixTransform3D)MatrixTransform3D.Identity, OnModelToWorldChanged));
+            new PropertyMetadata((MatrixTransform3D)Transform3D.Identity, OnModelToWorldChanged));
 
         public static readonly DependencyProperty ModelsProperty =
             DependencyProperty.Register("Models",
@@ -157,15 +137,15 @@ namespace IronPlot.Plotting3D
 
         protected static void OnCameraChanged(DependencyObject obj, DependencyPropertyChangedEventArgs e)
         {
-            ViewportImage viewportImage = ((ViewportImage)obj);
+            var viewportImage = ((ViewportImage)obj);
             viewportImage.RequestRender();
-            viewportImage.view = Matrix.LookAtRH(viewportImage.CameraPosition, viewportImage.CameraTarget, viewportImage.CameraUpVector);
+            viewportImage._view = Matrix.LookAtRH(viewportImage.CameraPosition, viewportImage.CameraTarget, viewportImage.CameraUpVector);
         }
 
         protected override void OnVisiblePropertyChanged(bool isVisible)
         {
-            if (isVisible == true) foreach (Model3D model in Models) model.RecursiveRecreateDisposables();
-            else foreach (Model3D model in Models) model.RecursiveDisposeDisposables();
+            if (isVisible) foreach (var model in Models) model.RecursiveRecreateDisposables();
+            else foreach (var model in Models) model.RecursiveDisposeDisposables();
         }
 
         protected static void OnModelToWorldChanged(DependencyObject obj, DependencyPropertyChangedEventArgs e)
@@ -176,19 +156,18 @@ namespace IronPlot.Plotting3D
         #endregion
 
         public ViewportImage()
-            : base()
         {
-            layer2D = null;
+            _layer2D = null;
             CreateDevice(SurfaceType.DirectX9);
-            FOV = 0.75f;
-            this.Scale = 1;
+            Fov = 0.75f;
+            Scale = 1;
         }
 
         protected override void Initialize()
         {
             SetValue(ModelsProperty, new Model3DCollection(this));
-            cameraTransform = Matrix.Identity;
-            world = Matrix.Identity;
+            _cameraTransform = Matrix.Identity;
+            _world = Matrix.Identity;
         }
 
         protected override void Draw()
@@ -196,28 +175,28 @@ namespace IronPlot.Plotting3D
             // Ensure transforms are updated and clear; otherwise leave to Model3D tree
             GraphicsDevice.Clear(ClearFlags.Target | ClearFlags.ZBuffer, new Color4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, 0);
             GraphicsDevice.BeginScene();
-            float aspect = (float)GraphicsDevice.Viewport.Width / (float)GraphicsDevice.Viewport.Height;
+            var aspect = GraphicsDevice.Viewport.Width / (float)GraphicsDevice.Viewport.Height;
 
-            switch (this.ViewPort3D.ProjectionType)
+            switch (ViewPort3D.ProjectionType)
             {
                 case ProjectionType.Perspective:
-                    projection = Matrix.PerspectiveFovRH(fov, aspect, 0.01f, 10000f);
+                    _projection = Matrix.PerspectiveFovRH(_fov, aspect, 0.01f, 10000f);
                     break;
                 case ProjectionType.Orthogonal:
-                    float width = (float)this.Models.Select(m => m.Bounds.Maximum.X).Max() * aspect;
-                    float height = (float)this.Models.Select(m => m.Bounds.Maximum.Y).Max();
-                    projection = Matrix.OrthoRH(width / this.Scale, height / this.Scale, 1, 100);
+                    var width = (float)Models.Select(m => m.Bounds.Maximum.X).Max() * aspect;
+                    var height = (float)Models.Select(m => m.Bounds.Maximum.Y).Max();
+                    _projection = Matrix.OrthoRH(width / Scale, height / Scale, 1, 100);
                     break;
             }
             
-            view = Matrix.LookAtRH(CameraPosition, CameraTarget, CameraUpVector);
-            world = Matrix.Identity;
+            _view = Matrix.LookAtRH(CameraPosition, CameraTarget, CameraUpVector);
+            _world = Matrix.Identity;
             // ENDTODO
-            GraphicsDevice.SetTransform(TransformState.Projection, ref projection);
-            GraphicsDevice.SetTransform(TransformState.View, ref view);
-            GraphicsDevice.SetTransform(TransformState.World, ref world);
+            GraphicsDevice.SetTransform(TransformState.Projection, ref _projection);
+            GraphicsDevice.SetTransform(TransformState.View, ref _view);
+            GraphicsDevice.SetTransform(TransformState.World, ref _world);
             
-            foreach (Model3D model in this.Models)
+            foreach (var model in Models)
             {
                 model.Draw();
             }

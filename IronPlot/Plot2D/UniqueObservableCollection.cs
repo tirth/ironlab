@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Collections.ObjectModel;
 
 namespace IronPlot
@@ -19,7 +17,7 @@ namespace IronPlot
         /// <param name="item">The item to insert.</param>
         protected override void InsertItem(int index, T item)
         {
-            if (!this.Contains(item))
+            if (!Contains(item))
             {
                 base.InsertItem(index, item);
             }
@@ -36,15 +34,12 @@ namespace IronPlot
         /// <param name="item">The item to be inserted.</param>
         protected override void SetItem(int index, T item)
         {
-            int newItemIndex = this.IndexOf(item);
+            var newItemIndex = IndexOf(item);
             if (newItemIndex != -1 && newItemIndex != index)
             {
                 throw new InvalidOperationException("Item already exists within collection.");
             }
-            else
-            {
-                base.SetItem(index, item);
-            }
+            base.SetItem(index, item);
         }
 
         /// <summary>
@@ -53,7 +48,7 @@ namespace IronPlot
         protected override void ClearItems()
         {
             IList<T> items = new List<T>(this);
-            foreach (T item in items)
+            foreach (var item in items)
             {
                 Remove(item);
             }

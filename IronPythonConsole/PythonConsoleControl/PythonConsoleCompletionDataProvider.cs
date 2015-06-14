@@ -4,15 +4,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using ICSharpCode.AvalonEdit.CodeCompletion;
-using ICSharpCode.AvalonEdit;
-using ICSharpCode.AvalonEdit.Editing;
-using ICSharpCode.AvalonEdit.Document;
-using Microsoft.Scripting.Hosting.Shell;
-using Microsoft.Scripting.Hosting;
-using Microsoft.Scripting;
 using System.Threading;
-using System.Reflection;
+using ICSharpCode.AvalonEdit.CodeCompletion;
+using IronPython.Runtime;
+using Microsoft.Scripting;
+using Microsoft.Scripting.Hosting.Shell;
 
 namespace PythonConsoleControl
 {
@@ -21,15 +17,15 @@ namespace PythonConsoleControl
     /// </summary>
     public class PythonConsoleCompletionDataProvider 
     {
-        CommandLine commandLine;
-        internal volatile bool AutocompletionInProgress = false;
+        readonly CommandLine _commandLine;
+        internal volatile bool AutocompletionInProgress;
 
-        bool excludeCallables;
-        public bool ExcludeCallables { get { return excludeCallables; } set { excludeCallables = value; } }
+        bool _excludeCallables;
+        public bool ExcludeCallables { get { return _excludeCallables; } set { _excludeCallables = value; } }
 
         public PythonConsoleCompletionDataProvider(CommandLine commandLine)//IMemberProvider memberProvider)
         {
-            this.commandLine = commandLine;
+            _commandLine = commandLine;
         }
 
         /// <summary>
@@ -39,64 +35,60 @@ namespace PythonConsoleControl
         /// </summary>
         public ICompletionData[] GenerateCompletionData(string line)
         {         
-            List<PythonCompletionData> items = new List<PythonCompletionData>(); //DefaultCompletionData
+            var items = new List<PythonCompletionData>(); //DefaultCompletionData
 
-            string name = GetName(line);
+            var name = GetName(line);
             // A very simple test of callables!
-            if (excludeCallables && name.Contains(')')) return null;
+            if (_excludeCallables && name.Contains(')')) return null;
 
-            if (!String.IsNullOrEmpty(name))
+            if (string.IsNullOrEmpty(name)) return items.ToArray();
+            var stream = _commandLine.ScriptScope.Engine.Runtime.IO.OutputStream;
+            try
             {
-                System.IO.Stream stream = commandLine.ScriptScope.Engine.Runtime.IO.OutputStream;
-                try
+                AutocompletionInProgress = true;
+                // Another possibility:
+                //commandLine.ScriptScope.Engine.Runtime.IO.SetOutput(new System.IO.MemoryStream(), Encoding.UTF8);
+                //object value = commandLine.ScriptScope.Engine.CreateScriptSourceFromString(name, SourceCodeKind.Expression).Execute(commandLine.ScriptScope);
+                //IList<string> members = commandLine.ScriptScope.Engine.Operations.GetMemberNames(value);
+                var type = TryGetType(name);
+                // Use Reflection for everything except in-built Python types and COM pbjects. 
+                if (type != null && type.Namespace != "IronPython.Runtime" && (type.Name != "__ComObject"))
                 {
-                    AutocompletionInProgress = true;
-                    // Another possibility:
-                    //commandLine.ScriptScope.Engine.Runtime.IO.SetOutput(new System.IO.MemoryStream(), Encoding.UTF8);
-                    //object value = commandLine.ScriptScope.Engine.CreateScriptSourceFromString(name, SourceCodeKind.Expression).Execute(commandLine.ScriptScope);
-                    //IList<string> members = commandLine.ScriptScope.Engine.Operations.GetMemberNames(value);
-                    Type type = TryGetType(name);
-                    // Use Reflection for everything except in-built Python types and COM pbjects. 
-                    if (type != null && type.Namespace != "IronPython.Runtime" && (type.Name != "__ComObject"))
-                    {
-                        PopulateFromCLRType(items, type, name);
-                    }
-                    else
-                    {
-                        string dirCommand = "dir(" + name + ")";
-                        object value = commandLine.ScriptScope.Engine.CreateScriptSourceFromString(dirCommand, SourceCodeKind.Expression).Execute(commandLine.ScriptScope);
-                        AutocompletionInProgress = false;
-                        foreach (object member in (value as IronPython.Runtime.List))
-                        {
-                            items.Add(new PythonCompletionData((string)member, name, commandLine, false));
-                        }
-                    }
+                    PopulateFromClrType(items, type, name);
                 }
-                catch (ThreadAbortException tae)
+                else
                 {
-                    if (tae.ExceptionState is Microsoft.Scripting.KeyboardInterruptException) Thread.ResetAbort();
+                    var dirCommand = "dir(" + name + ")";
+                    object value = _commandLine.ScriptScope.Engine.CreateScriptSourceFromString(dirCommand, SourceCodeKind.Expression).Execute(_commandLine.ScriptScope);
+                    AutocompletionInProgress = false;
+                    if (value != null)
+                        items.AddRange((value as List).Select(member => new PythonCompletionData((string) member, name, _commandLine, false)));
                 }
-                catch
-                {
-                    // Do nothing.
-                }
-                commandLine.ScriptScope.Engine.Runtime.IO.SetOutput(stream, Encoding.UTF8);
-                AutocompletionInProgress = false;
             }
+            catch (ThreadAbortException tae)
+            {
+                if (tae.ExceptionState is KeyboardInterruptException) Thread.ResetAbort();
+            }
+            catch
+            {
+                // Do nothing.
+            }
+            _commandLine.ScriptScope.Engine.Runtime.IO.SetOutput(stream, Encoding.UTF8);
+            AutocompletionInProgress = false;
             return items.ToArray();
         }
 
         protected Type TryGetType(string name)
         {
-            string tryGetType = name + ".GetType()";
+            var tryGetType = name + ".GetType()";
             object type = null;
             try
             {
-                type = commandLine.ScriptScope.Engine.CreateScriptSourceFromString(tryGetType, SourceCodeKind.Expression).Execute(commandLine.ScriptScope);
+                type = _commandLine.ScriptScope.Engine.CreateScriptSourceFromString(tryGetType, SourceCodeKind.Expression).Execute(_commandLine.ScriptScope);
             }
             catch (ThreadAbortException tae)
             {
-                if (tae.ExceptionState is Microsoft.Scripting.KeyboardInterruptException) Thread.ResetAbort();
+                if (tae.ExceptionState is KeyboardInterruptException) Thread.ResetAbort();
             }
             catch
             {
@@ -105,39 +97,29 @@ namespace PythonConsoleControl
             return type as Type;
         }
 
-        protected void PopulateFromCLRType(List<PythonCompletionData> items, Type type, string name)
+        protected void PopulateFromClrType(List<PythonCompletionData> items, Type type, string name)
         {
-            List<string> completionsList = new List<string>();
-            MethodInfo[] methodInfo = type.GetMethods();
-            PropertyInfo[] propertyInfo = type.GetProperties();
-            FieldInfo[] fieldInfo = type.GetFields();
-            foreach (MethodInfo methodInfoItem in methodInfo)
-            {
-                if ((methodInfoItem.IsPublic)
-                    && (methodInfoItem.Name.IndexOf("get_") != 0) && (methodInfoItem.Name.IndexOf("set_") != 0)
-                    && (methodInfoItem.Name.IndexOf("add_") != 0) && (methodInfoItem.Name.IndexOf("remove_") != 0)
-                    && (methodInfoItem.Name.IndexOf("__") != 0))
-                    completionsList.Add(methodInfoItem.Name);
-            }
-            foreach (PropertyInfo propertyInfoItem in propertyInfo)
-            {
-                completionsList.Add(propertyInfoItem.Name);
-            }
-            foreach (FieldInfo fieldInfoItem in fieldInfo)
-            {
-                completionsList.Add(fieldInfoItem.Name);
-            }
+            var methodInfo = type.GetMethods();
+            var propertyInfo = type.GetProperties();
+            var fieldInfo = type.GetFields();
+            var completionsList = (methodInfo.Where(
+                methodInfoItem =>
+                    (methodInfoItem.IsPublic) && (methodInfoItem.Name.IndexOf("get_", StringComparison.Ordinal) != 0) &&
+                    (methodInfoItem.Name.IndexOf("set_", StringComparison.Ordinal) != 0) &&
+                    (methodInfoItem.Name.IndexOf("add_", StringComparison.Ordinal) != 0) &&
+                    (methodInfoItem.Name.IndexOf("remove_", StringComparison.Ordinal) != 0) &&
+                    (methodInfoItem.Name.IndexOf("__", StringComparison.Ordinal) != 0))
+                .Select(methodInfoItem => methodInfoItem.Name)).ToList();
+            completionsList.AddRange(propertyInfo.Select(propertyInfoItem => propertyInfoItem.Name));
+            completionsList.AddRange(fieldInfo.Select(fieldInfoItem => fieldInfoItem.Name));
             completionsList.Sort();
-            string last = "";
-            for (int i = completionsList.Count - 1; i > 0; --i)
+            var last = "";
+            for (var i = completionsList.Count - 1; i > 0; --i)
             {
                 if (completionsList[i] == last) completionsList.RemoveAt(i);
                 else last = completionsList[i];
             }
-            foreach (string completion in completionsList)
-            {
-                items.Add(new PythonCompletionData(completion, name, commandLine, true));
-            }
+            items.AddRange(completionsList.Select(completion => new PythonCompletionData(completion, name, _commandLine, true)));
         }
 
         /// <summary>
@@ -147,44 +129,42 @@ namespace PythonConsoleControl
         /// </summary>
         public void GenerateDescription(string stub, string item, DescriptionUpdateDelegate updateDescription, bool isInstance)
         {
-            System.IO.Stream stream = commandLine.ScriptScope.Engine.Runtime.IO.OutputStream;
-            string description = "";
-            if (!String.IsNullOrEmpty(item))
+            var stream = _commandLine.ScriptScope.Engine.Runtime.IO.OutputStream;
+            var description = "";
+            if (string.IsNullOrEmpty(item)) return;
+            try
             {
-                try
-                {
-                    AutocompletionInProgress = true;
-                    // Another possibility:
-                    //commandLine.ScriptScope.Engine.Runtime.IO.SetOutput(new System.IO.MemoryStream(), Encoding.UTF8);
-                    //object value = commandLine.ScriptScope.Engine.CreateScriptSourceFromString(item, SourceCodeKind.Expression).Execute(commandLine.ScriptScope);
-                    //description = commandLine.ScriptScope.Engine.Operations.GetDocumentation(value);
-                    string docCommand = "";
-                    if (isInstance) docCommand = "type(" + stub + ")" + "." + item + ".__doc__";
-                    else docCommand = stub + "." + item + ".__doc__";
-                    object value = commandLine.ScriptScope.Engine.CreateScriptSourceFromString(docCommand, SourceCodeKind.Expression).Execute(commandLine.ScriptScope);
-                    description = (string)value;
-                    AutocompletionInProgress = false;
-                }
-                catch (ThreadAbortException tae)
-                {
-                    if (tae.ExceptionState is Microsoft.Scripting.KeyboardInterruptException) Thread.ResetAbort();
-                    AutocompletionInProgress = false;
-                }
-                catch
-                {
-                    AutocompletionInProgress = false;
-                    // Do nothing.
-                }
-                commandLine.ScriptScope.Engine.Runtime.IO.SetOutput(stream, Encoding.UTF8);
-                updateDescription(description);
+                AutocompletionInProgress = true;
+                // Another possibility:
+                //commandLine.ScriptScope.Engine.Runtime.IO.SetOutput(new System.IO.MemoryStream(), Encoding.UTF8);
+                //object value = commandLine.ScriptScope.Engine.CreateScriptSourceFromString(item, SourceCodeKind.Expression).Execute(commandLine.ScriptScope);
+                //description = commandLine.ScriptScope.Engine.Operations.GetDocumentation(value);
+                var docCommand = "";
+                if (isInstance) docCommand = "type(" + stub + ")" + "." + item + ".__doc__";
+                else docCommand = stub + "." + item + ".__doc__";
+                object value = _commandLine.ScriptScope.Engine.CreateScriptSourceFromString(docCommand, SourceCodeKind.Expression).Execute(_commandLine.ScriptScope);
+                description = (string)value;
+                AutocompletionInProgress = false;
             }
+            catch (ThreadAbortException tae)
+            {
+                if (tae.ExceptionState is KeyboardInterruptException) Thread.ResetAbort();
+                AutocompletionInProgress = false;
+            }
+            catch
+            {
+                AutocompletionInProgress = false;
+                // Do nothing.
+            }
+            _commandLine.ScriptScope.Engine.Runtime.IO.SetOutput(stream, Encoding.UTF8);
+            updateDescription(description);
         }
 
 
-        string GetName(string text)
+        static string GetName(string text)
         {
             text = text.Replace("\t", "   ");
-            int startIndex = text.LastIndexOf(' ');
+            var startIndex = text.LastIndexOf(' ');
             return text.Substring(startIndex + 1).Trim('.');
         }
 

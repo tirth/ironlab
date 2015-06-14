@@ -1,25 +1,12 @@
 ﻿// Copyright (c) 2010 Joe Moorhouse
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
 using System.Windows.Shapes;
-using System.Windows.Xps;
+
 //using System.Windows.Xps.Packaging;
 //using System.Windows.Xps.Serialization;
-using System.Printing;
-using System.Threading;
-using System.Windows.Threading;
-using System.ComponentModel;
+
 #if ILNumerics
 using ILNumerics;
 using ILNumerics.Storage;
@@ -46,18 +33,15 @@ namespace IronPlot
         //[CommonDependencyProperty]
         public static readonly DependencyProperty DataProperty;
 
-        public PlotPath() : base()
-        {}
-
         public Geometry Data
         {
             get
             {
-                return (Geometry)base.GetValue(DataProperty);
+                return (Geometry)GetValue(DataProperty);
             }
             set
             {
-                base.SetValue(DataProperty, value);
+                SetValue(DataProperty, value);
             }
         }
 
@@ -65,7 +49,7 @@ namespace IronPlot
         {
             get
             {
-                Geometry data = this.Data;
+                var data = Data;
                 if (data == null)
                 {
                     data = Geometry.Empty;
@@ -94,7 +78,7 @@ namespace IronPlot
 
         protected static void OnQuickStrokeDashPropertyChanged(DependencyObject obj, DependencyPropertyChangedEventArgs e)
         {
-            DoubleCollection doubleColl = new DoubleCollection();
+            var doubleColl = new DoubleCollection();
             if ((QuickStrokeDash)(e.NewValue) == QuickStrokeDash.None)
             {
                 ((PlotPath)obj).SetValue(VisibilityProperty, Visibility.Collapsed);

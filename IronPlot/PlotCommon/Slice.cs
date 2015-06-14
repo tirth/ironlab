@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 
 namespace IronPlot.PlotCommon
 {
@@ -18,11 +16,11 @@ namespace IronPlot.PlotCommon
     
     public class Slice2D<T> : IEnumerable<T>
     {
-        DimensionSlice x;
-        DimensionSlice y;
-        T[,] array;
-        int xLength;
-        int yLength;
+        DimensionSlice _x;
+        DimensionSlice _y;
+        T[,] _array;
+        int _xLength;
+        int _yLength;
 
         public Slice2D(T[,] array, DimensionSlice x, DimensionSlice y)
         {
@@ -36,15 +34,15 @@ namespace IronPlot.PlotCommon
 
         public void CommonConstructor(T[,] array, DimensionSlice x, DimensionSlice y)
         {
-            this.x = x; this.y = y;
-            this.array = array;
-            if (this.x.Stop == null) this.x.Stop = array.GetLength(0);
-            if (this.y.Stop == null) this.y.Stop = array.GetLength(1);
-            xLength = ((int)x.Stop - x.Start) / x.Step;
-            yLength = ((int)y.Stop - y.Start) / y.Step;
+            _x = x; _y = y;
+            _array = array;
+            if (_x.Stop == null) _x.Stop = array.GetLength(0);
+            if (_y.Stop == null) _y.Stop = array.GetLength(1);
+            _xLength = ((int)x.Stop - x.Start) / x.Step;
+            _yLength = ((int)y.Stop - y.Start) / y.Step;
         }
 
-        public T[,] Array { get { return array; } }
+        public T[,] Array => _array;
 
         /// <summary>
         /// Indexing: likely to be slower than using Update method.
@@ -53,17 +51,17 @@ namespace IronPlot.PlotCommon
         /// <returns></returns>
         public T this[int index]
         {
-            get { return array[index % xLength, index / xLength]; }
-            set { array[index % xLength, index / xLength] = value; }
+            get { return _array[index % _xLength, index / _xLength]; }
+            set { _array[index % _xLength, index / _xLength] = value; }
         }
 
         IEnumerator IEnumerable.GetEnumerator()
         {
-            foreach (int xIndex in x)
+            foreach (var xIndex in _x)
             {
-                foreach (int yIndex in y)
+                foreach (var yIndex in _y)
                 {
-                    yield return array[xIndex, yIndex];
+                    yield return _array[xIndex, yIndex];
                 }
             }
         }
@@ -71,64 +69,64 @@ namespace IronPlot.PlotCommon
 
         public IEnumerator<T> GetEnumerator()
         {
-            foreach (int xIndex in x)
+            foreach (var xIndex in _x)
             {
-                foreach (int yIndex in y)
+                foreach (var yIndex in _y)
                 {
-                    yield return array[xIndex, yIndex];
+                    yield return _array[xIndex, yIndex];
                 }
             }
         }
 
         public void Set(Func<T, T> function)
         {
-            int xIndex = x.Start;
-            int yIndex = y.Start;
+            var xIndex = _x.Start;
+            var yIndex = _y.Start;
             while (true)
             {
-                array[xIndex, yIndex] = function(array[xIndex, yIndex]);
-                xIndex += x.Step;
-                if (xIndex > x.Stop)
+                _array[xIndex, yIndex] = function(_array[xIndex, yIndex]);
+                xIndex += _x.Step;
+                if (xIndex > _x.Stop)
                 {
-                    xIndex = x.Start;
-                    yIndex += y.Step;
-                    if (yIndex > y.Stop) break;
+                    xIndex = _x.Start;
+                    yIndex += _y.Step;
+                    if (yIndex > _y.Stop) break;
                 }
             }
         }
 
         public void Set(IEnumerable<T> input1, Func<T, T, T> function)
         {
-            int xIndex = x.Start;
-            int yIndex = y.Start;
-            foreach (T item in input1)
+            var xIndex = _x.Start;
+            var yIndex = _y.Start;
+            foreach (var item in input1)
             {
-                array[xIndex, yIndex] = function(array[xIndex, yIndex], item);
-                xIndex += x.Step;
-                if (xIndex > x.Stop) 
+                _array[xIndex, yIndex] = function(_array[xIndex, yIndex], item);
+                xIndex += _x.Step;
+                if (xIndex > _x.Stop) 
                 {
-                    xIndex = x.Start;
-                    yIndex += y.Step;
-                    if (yIndex > y.Stop) break;
+                    xIndex = _x.Start;
+                    yIndex += _y.Step;
+                    if (yIndex > _y.Stop) break;
                 }
             }
         }
 
         public void Set(IEnumerable<T> input1, IEnumerable<T> input2, Func<T, T, T, T> function)
         {
-            int xIndex = x.Start;
-            int yIndex = y.Start;
+            var xIndex = _x.Start;
+            var yIndex = _y.Start;
             var item1 = input1.GetEnumerator();
             var item2 = input2.GetEnumerator();
             while (item1.MoveNext() && item2.MoveNext()) 
             {
-                array[xIndex, yIndex] = function(array[xIndex, yIndex], item1.Current, item2.Current);
-                xIndex += x.Step;
-                if (xIndex > x.Stop)
+                _array[xIndex, yIndex] = function(_array[xIndex, yIndex], item1.Current, item2.Current);
+                xIndex += _x.Step;
+                if (xIndex > _x.Stop)
                 {
-                    xIndex = x.Start;
-                    yIndex += y.Step;
-                    if (yIndex > y.Stop) break;
+                    xIndex = _x.Start;
+                    yIndex += _y.Step;
+                    if (yIndex > _y.Stop) break;
                 }
             }
         }
@@ -142,28 +140,22 @@ namespace IronPlot.PlotCommon
 
         public DimensionSlice(int start, int step, int? stop)
         {
-            this.Start = start;
-            this.Step = step;
-            this.Stop = stop;
+            Start = start;
+            Step = step;
+            Stop = stop;
         }
         
         IEnumerator IEnumerable.GetEnumerator()
         {
-            for (int i = Start; i < Stop; i += Step) yield return i;
+            for (var i = Start; i < Stop; i += Step) yield return i;
         }
 
         public IEnumerator<int> GetEnumerator()
         {
-            for (int i = Start; i < Stop; i += Step) yield return i;
+            for (var i = Start; i < Stop; i += Step) yield return i;
         }
 
-        internal int this[int index]
-        {
-            get
-            {
-                return Start + index * Step;
-            }
-        }
+        internal int this[int index] => Start + index * Step;
 
         public static DimensionSlice CreateBasic(int length)
         {

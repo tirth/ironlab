@@ -1,10 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Windows.Controls;
-using System.Windows.Media;
 using System.Windows;
+using System.Windows.Controls;
 
 namespace IronPlot
 {
@@ -20,8 +17,8 @@ namespace IronPlot
 
     public class Plot2DGrid : Grid
     {
-        List<AlignedAxes> alignedAxesList = new List<AlignedAxes>();
-        List<PlotPanel> plotPanelList = new List<PlotPanel>();
+        readonly List<AlignedAxes> _alignedAxesList = new List<AlignedAxes>();
+        readonly List<PlotPanel> _plotPanelList = new List<PlotPanel>();
 
         protected override Size MeasureOverride(Size constraint)
         {
@@ -31,18 +28,18 @@ namespace IronPlot
 
         public void FindPlotPanelsAndAlignedAxes()
         {
-            plotPanelList.Clear();
-            alignedAxesList.Clear();
+            _plotPanelList.Clear();
+            _alignedAxesList.Clear();
             foreach (UIElement element in Children)
             {
                 if (element is Plot2D)
                 {
-                    PlotPanel plotPanel = (element as Plot2D).PlotPanel;
-                    plotPanelList.Add(plotPanel);
-                    int column = (int)element.GetValue(ColumnProperty);
-                    int columnSpan = (int)element.GetValue(ColumnSpanProperty);
-                    int row = (int)element.GetValue(RowProperty);
-                    int rowSpan = (int)element.GetValue(RowSpanProperty);
+                    var plotPanel = (element as Plot2D).PlotPanel;
+                    _plotPanelList.Add(plotPanel);
+                    var column = (int)element.GetValue(ColumnProperty);
+                    var columnSpan = (int)element.GetValue(ColumnSpanProperty);
+                    var row = (int)element.GetValue(RowProperty);
+                    var rowSpan = (int)element.GetValue(RowSpanProperty);
                     GetAlignedAxes(AlignmentDirection.Row, row, rowSpan).Axes.AddRange(plotPanel.Axes.YAxes);
                     GetAlignedAxes(AlignmentDirection.Column, column, columnSpan).Axes.AddRange(plotPanel.Axes.XAxes);
                 }
@@ -51,27 +48,27 @@ namespace IronPlot
 
         public AlignedAxes GetAlignedAxes(AlignmentDirection alignmentDirection, int position, int span)
         {
-            var axes = alignedAxesList.Where(t => t.AlignmentDirection == alignmentDirection
+            var axes = _alignedAxesList.Where(t => t.AlignmentDirection == alignmentDirection
                 && t.Position == position && t.Span == span).DefaultIfEmpty(null).First();
             if (axes == null)
             {
-                var newAxes = new AlignedAxes()
+                var newAxes = new AlignedAxes
                 {
                     Axes = new List<Axis2D>(),
                     AlignmentDirection = alignmentDirection,
                     Position = position,
                     Span = span
                 };
-                alignedAxesList.Add(newAxes);
+                _alignedAxesList.Add(newAxes);
                 return newAxes;
             }
-            else return axes;
+            return axes;
         }
         
         public void PlaceAxesFull()
         {
-            int iter = 0;
-            foreach (Axes2D axis in plotPanelList.Select(t => t.Axes))
+            var iter = 0;
+            foreach (var axis in _plotPanelList.Select(t => t.Axes))
             {
                 axis.UpdateAxisPositions();
             }

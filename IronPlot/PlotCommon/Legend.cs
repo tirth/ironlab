@@ -1,12 +1,8 @@
 ﻿using System;
-using System.Collections;
-using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
 
 namespace IronPlot
 {
@@ -15,7 +11,7 @@ namespace IronPlot
     /// </summary>
     [StyleTypedProperty(Property = "ItemContainerStyle", StyleTargetType = typeof(ContentPresenter))]
     [StyleTypedProperty(Property = "TitleStyle", StyleTargetType = typeof(Title))]
-    public partial class Legend : HeaderedItemsControl
+    public class Legend : HeaderedItemsControl
     {
 #if !SILVERLIGHT
         /// <summary>
@@ -48,7 +44,7 @@ namespace IronPlot
             DefaultStyleKey = typeof(Legend);
             this.SetBinding(HeaderProperty, new Binding("Title") { Source = this, Mode = BindingMode.TwoWay });
 #endif
-            this.Visibility = Visibility.Collapsed;
+            Visibility = Visibility.Collapsed;
         }
 
         #region public Style TitleStyle
@@ -78,7 +74,7 @@ namespace IronPlot
         /// </summary>
         public object Title
         {
-            get { return GetValue(TitleProperty) as object; }
+            get { return GetValue(TitleProperty); }
             set { SetValue(TitleProperty, value); }
         }
 
@@ -90,7 +86,7 @@ namespace IronPlot
                 "Title",
                 typeof(object),
                 typeof(Legend),
-                new PropertyMetadata(new PropertyChangedCallback(OnTitleChanged)));
+                new PropertyMetadata(OnTitleChanged));
 
         /// <summary>
         /// Updates the legend visibility when the title changes.
@@ -99,7 +95,7 @@ namespace IronPlot
         /// <param name="args">Information about the event.</param>
         public static void OnTitleChanged(object sender, DependencyPropertyChangedEventArgs args)
         {
-            Legend legend = (Legend)sender;
+            var legend = (Legend)sender;
 #if !SILVERLIGHT
             // Push value through because Binding doesn't work like it does on Silverlight
             legend.Header = legend.Title;
@@ -123,7 +119,7 @@ namespace IronPlot
         /// </summary>
         internal void UpdateLegendVisibility()
         {
-            bool showLegend = this.Header != null;
+            var showLegend = Header != null;
             if (!showLegend)
             {
                 foreach (var item in Items)

@@ -1,16 +1,8 @@
-﻿using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
-using System.Reflection;
+
 namespace IronPlot
 {
     public class LabelProperties : DependencyObject
@@ -105,19 +97,19 @@ namespace IronPlot
         /// Constructor offering the ability to bind the new object to a parent.
         /// </summary>
         /// <param name="parentLabelProperties">Parent set of properties.</param>
-        public LabelProperties(LabelProperties parentLabelProperties) : base()
+        public LabelProperties(LabelProperties parentLabelProperties)
         {
             SetParent(parentLabelProperties);
         }
 
         internal void SetParent(LabelProperties parentLabelProperties)
         {
-            FieldInfo[] fields = this.GetType().GetFields();
-            foreach (FieldInfo field in fields)
+            var fields = GetType().GetFields();
+            foreach (var field in fields)
             {
-                DependencyProperty dp = (DependencyProperty)field.GetValue(this);
-                DependencyProperty dpTextblock = (DependencyProperty)(parentLabelProperties.GetType().GetField(string.Concat(dp.Name, "Property")).GetValue(parentLabelProperties));
-                Binding bindingTransform = new Binding(dp.Name);
+                var dp = (DependencyProperty)field.GetValue(this);
+                var dpTextblock = (DependencyProperty)(parentLabelProperties.GetType().GetField(string.Concat(dp.Name, "Property")).GetValue(parentLabelProperties));
+                var bindingTransform = new Binding(dp.Name);
                 bindingTransform.Source = parentLabelProperties;
                 bindingTransform.Mode = BindingMode.OneWay;
                 BindingOperations.SetBinding(this, dpTextblock, bindingTransform);
@@ -126,12 +118,12 @@ namespace IronPlot
 
         internal void BindTextBlock(TextBlock textblock)
         {
-            FieldInfo[] fields = this.GetType().GetFields();
-            foreach (FieldInfo field in fields)
+            var fields = GetType().GetFields();
+            foreach (var field in fields)
             {
-                DependencyProperty dp = (DependencyProperty)field.GetValue(this);
-                DependencyProperty dpTextblock = (DependencyProperty)(textblock.GetType().GetField(string.Concat(dp.Name, "Property")).GetValue(textblock));
-                Binding bindingTransform = new Binding(dp.Name);
+                var dp = (DependencyProperty)field.GetValue(this);
+                var dpTextblock = (DependencyProperty)(textblock.GetType().GetField(string.Concat(dp.Name, "Property")).GetValue(textblock));
+                var bindingTransform = new Binding(dp.Name);
                 bindingTransform.Source = this;
                 bindingTransform.Mode = BindingMode.OneWay;
                 BindingOperations.SetBinding(textblock, dpTextblock, bindingTransform);

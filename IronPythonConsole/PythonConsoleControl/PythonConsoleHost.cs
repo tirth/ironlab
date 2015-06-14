@@ -1,10 +1,8 @@
 ﻿// Copyright (c) 2010 Joe Moorhouse
 
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Windows;
 using System.Threading;
 using IronPython.Hosting;
 using IronPython.Runtime;
@@ -21,48 +19,34 @@ namespace PythonConsoleControl
     /// </summary>
     public class PythonConsoleHost : ConsoleHost, IDisposable
     {
-        Thread thread;
-        PythonTextEditor textEditor;
-        PythonConsole pythonConsole;
+        Thread _thread;
+        readonly PythonTextEditor _textEditor;
 
         public event ConsoleCreatedEventHandler ConsoleCreated;
 
         public PythonConsoleHost(PythonTextEditor textEditor)
         {
-            this.textEditor = textEditor;
+            _textEditor = textEditor;
         }
 
-        public PythonConsole Console
-        {
-            get { return pythonConsole; }
-        }
+        public PythonConsole Console { get; private set; }
 
-        protected override Type Provider
-        {
-            get { return typeof(PythonContext); }
-        }
+        protected override Type Provider => typeof(PythonContext);
 
         /// <summary>
         /// Runs the console host in its own thread.
         /// </summary>
         public void Run()
         {
-            thread = new Thread(RunConsole);
-            thread.IsBackground = true;
-            thread.Start();
+            _thread = new Thread(RunConsole) {IsBackground = true};
+            _thread.Start();
         }
 
         public void Dispose()
         {
-            if (pythonConsole != null)
-            {
-                pythonConsole.Dispose();
-            }
+            Console?.Dispose();
 
-            if (thread != null)
-            {
-                thread.Join();
-            }
+            _thread?.Join();
         }
 
         protected override CommandLine CreateCommandLine()
@@ -83,10 +67,10 @@ namespace PythonConsoleControl
         /// </remarks>
         protected override IConsole CreateConsole(ScriptEngine engine, CommandLine commandLine, ConsoleOptions options)
         {
-            SetOutput(new PythonOutputStream(textEditor));
-            pythonConsole = new PythonConsole(textEditor, commandLine);
-            if (ConsoleCreated != null) ConsoleCreated(this, EventArgs.Empty);
-            return pythonConsole;
+            SetOutput(new PythonOutputStream(_textEditor));
+            Console = new PythonConsole(_textEditor, commandLine);
+            ConsoleCreated?.Invoke(this, EventArgs.Empty);
+            return Console;
         }
 
         protected virtual void SetOutput(PythonOutputStream stream)
@@ -99,26 +83,21 @@ namespace PythonConsoleControl
         /// </summary>
         void RunConsole()
         {
-            this.Run(new string[] { "-X:FullFrames" });
+            Run(new[] { "-X:FullFrames" });
         }
 
         protected override ScriptRuntimeSetup CreateRuntimeSetup()
         {
-            ScriptRuntimeSetup srs = ScriptRuntimeSetup.ReadConfiguration();
-            foreach (var langSetup in srs.LanguageSetups)
-            {
-                if (langSetup.FileExtensions.Contains(".py"))
-                {
-                    langSetup.Options["SearchPaths"] = new string[0];
-                }
-            }
+            var srs = ScriptRuntimeSetup.ReadConfiguration();
+            foreach (var langSetup in srs.LanguageSetups.Where(langSetup => langSetup.FileExtensions.Contains(".py")))
+                langSetup.Options["SearchPaths"] = new string[0];
             return srs;
         }
 
         protected override void ParseHostOptions(string[] args)
         {
             // Python doesn't want any of the DLR base options.
-            foreach (string s in args)
+            foreach (var s in args)
             {
                 Options.IgnoredArgs.Add(s);
             }
@@ -127,7 +106,7 @@ namespace PythonConsoleControl
         protected override void ExecuteInternal()
         {
             var pc = HostingHelpers.GetLanguageContext(Engine) as PythonContext;
-            pc.SetModuleState(typeof(ScriptEngine), Engine);
+            pc?.SetModuleState(typeof(ScriptEngine), Engine);
             base.ExecuteInternal();
         }
     }

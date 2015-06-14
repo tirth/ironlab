@@ -1,8 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.IO;
+using System.Linq;
 using System.Windows;
 
 namespace IronPlot
@@ -19,7 +18,7 @@ namespace IronPlot
 
             // get the data and set the parsing method based on the format
             // currently works with CSV and Text DataFormats            
-            IDataObject dataObj = Clipboard.GetDataObject();
+            var dataObj = Clipboard.GetDataObject();
             if ((clipboardRawData = dataObj.GetData(DataFormats.CommaSeparatedValue)) != null)
             {
                 parseFormat = ParseCsvFormat;
@@ -31,30 +30,20 @@ namespace IronPlot
 
             if (parseFormat != null)
             {
-                string rawDataStr = clipboardRawData as string;
+                var rawDataStr = clipboardRawData as string;
 
                 if (rawDataStr == null && clipboardRawData is MemoryStream)
                 {
                     // cannot convert to a string so try a MemoryStream
-                    MemoryStream ms = clipboardRawData as MemoryStream;
-                    StreamReader sr = new StreamReader(ms);
+                    var ms = clipboardRawData as MemoryStream;
+                    var sr = new StreamReader(ms);
                     rawDataStr = sr.ReadToEnd();
                 }
                 //Debug.Assert(rawDataStr != null, string.Format("clipboardRawData: {0}, could not be converted to a string or memorystream.", clipboardRawData));
 
-                string[] rows = rawDataStr.Split(new string[] { "\r\n" }, StringSplitOptions.RemoveEmptyEntries);
+                var rows = rawDataStr?.Split(new[] { "\r\n" }, StringSplitOptions.RemoveEmptyEntries);
                 if (rows != null && rows.Length > 0)
-                {
-                    clipboardData = new List<string[]>();
-                    foreach (string row in rows)
-                    {
-                        clipboardData.Add(parseFormat(row));
-                    }
-                }
-                else
-                {
-                    //Debug.WriteLine("unable to parse row data.  possibly null or contains zero rows.");
-                }
+                    clipboardData = rows.Select(row => parseFormat(row)).ToList();
             }
 
             return clipboardData;
@@ -70,17 +59,17 @@ namespace IronPlot
             return ParseCsvOrTextFormat(value, false);
         }
 
-        private static string[] ParseCsvOrTextFormat(string value, bool isCSV)
+        private static string[] ParseCsvOrTextFormat(string value, bool isCsv)
         {
-            List<string> outputList = new List<string>();
+            var outputList = new List<string>();
 
-            char separator = isCSV ? ',' : '\t';
-            int startIndex = 0;
-            int endIndex = 0;
+            var separator = isCsv ? ',' : '\t';
+            var startIndex = 0;
+            var endIndex = 0;
 
-            for (int i = 0; i < value.Length; i++)
+            for (var i = 0; i < value.Length; i++)
             {
-                char ch = value[i];
+                var ch = value[i];
                 if (ch == separator)
                 {
                     outputList.Add(value.Substring(startIndex, endIndex - startIndex));
@@ -88,7 +77,7 @@ namespace IronPlot
                     startIndex = endIndex + 1;
                     endIndex = startIndex;
                 }
-                else if (ch == '\"' && isCSV)
+                else if (ch == '\"' && isCsv)
                 {
                     // skip until the ending quotes
                     i++;
@@ -96,7 +85,7 @@ namespace IronPlot
                     {
                         throw new FormatException(string.Format("value: {0} had a format exception", value));
                     }
-                    char tempCh = value[i];
+                    var tempCh = value[i];
                     while (tempCh != '\"' && i < value.Length)
                         i++;
 

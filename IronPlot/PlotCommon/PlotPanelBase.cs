@@ -1,24 +1,12 @@
 ﻿// Copyright (c) 2010 Joe Moorhouse
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
-using System.Windows.Threading;
-using System.Diagnostics;
-using System.Collections.ObjectModel;
 using System.Windows.Markup;
-using System.Collections.Specialized;
-using System.Collections;
+using System.Windows.Media;
 
 namespace IronPlot
 {
@@ -35,10 +23,10 @@ namespace IronPlot
         internal StackPanel AnnotationsBottom;
 
         // Whether or not legends are shown:
-        protected bool showAnnotationsLeft = false;
-        protected bool showAnnotationsRight = false;
-        protected bool showAnnotationsTop = false;
-        protected bool showAnnotationsBottom = false;
+        protected bool ShowAnnotationsLeft;
+        protected bool ShowAnnotationsRight;
+        protected bool ShowAnnotationsTop;
+        protected bool ShowAnnotationsBottom;
 
         // Thickness required for the legends.
         internal Thickness LegendRegion;
@@ -54,14 +42,13 @@ namespace IronPlot
             new PropertyMetadata(Position.Right, OnPositionPropertyChanged));
 
         public PlotPanelBase()
-            : base()
         {
             CreateLegends();
         }
 
         private static void OnPositionPropertyChanged(DependencyObject element, DependencyPropertyChangedEventArgs e)
         {
-            PlotPanelBase parent = VisualTreeHelper.GetParent(VisualTreeHelper.GetParent(element)) as PlotPanelBase;
+            var parent = VisualTreeHelper.GetParent(VisualTreeHelper.GetParent(element)) as PlotPanelBase;
             if (parent != null)
             {
                 parent.AddOrRemoveAnnotation((UIElement)element, (Position)e.OldValue, AddOrRemove.Remove);
@@ -156,24 +143,24 @@ namespace IronPlot
 
         protected virtual void CreateLegends()
         {
-            annotations.CollectionChanged += new NotifyCollectionChangedEventHandler(annotations_CollectionChanged);
+            annotations.CollectionChanged += annotations_CollectionChanged;
             
             // Left annotations
-            AnnotationsLeft = new StackPanel() { Orientation = Orientation.Horizontal };
+            AnnotationsLeft = new StackPanel { Orientation = Orientation.Horizontal };
             //AnnotationsLeft.FlowDirection = FlowDirection.RightToLeft;
-            this.Children.Add(AnnotationsLeft);
+            Children.Add(AnnotationsLeft);
             //
             // Right legend
-            AnnotationsRight = new StackPanel() { Orientation = Orientation.Horizontal };
-            this.Children.Add(AnnotationsRight);
+            AnnotationsRight = new StackPanel { Orientation = Orientation.Horizontal };
+            Children.Add(AnnotationsRight);
             //
             // Top legend
             AnnotationsTop = new StackPanel();
-            this.Children.Add(AnnotationsTop);
+            Children.Add(AnnotationsTop);
             //
             // Bottom legend
             AnnotationsBottom = new StackPanel();
-            this.Children.Add(AnnotationsBottom);
+            Children.Add(AnnotationsBottom);
             //
         }
 
@@ -192,7 +179,7 @@ namespace IronPlot
         protected Rect PlaceAnnotations(Size availableSize)
         {
             double startX = 0; double startY = 0;
-            double endX = availableSize.Width; double endY = availableSize.Height;
+            var endX = availableSize.Width; var endY = availableSize.Height;
             LegendRegion = new Thickness();
 
             startX += AnnotationsLeft.DesiredSize.Width;
@@ -203,9 +190,9 @@ namespace IronPlot
             LegendRegion.Top += AnnotationsTop.DesiredSize.Height;
             endY -= AnnotationsBottom.DesiredSize.Height;
             LegendRegion.Bottom += AnnotationsBottom.DesiredSize.Height;
-            showAnnotationsLeft = showAnnotationsRight = showAnnotationsTop = showAnnotationsBottom = true;
+            ShowAnnotationsLeft = ShowAnnotationsRight = ShowAnnotationsTop = ShowAnnotationsBottom = true;
 
-            Rect available = new Rect(startX, startY, Math.Max(endX - startX, 1), Math.Max(endY - startY, 1)); // new Rect(startX, 0, endX - startX, endY - startY);
+            var available = new Rect(startX, startY, Math.Max(endX - startX, 1), Math.Max(endY - startY, 1)); // new Rect(startX, 0, endX - startX, endY - startY);
             return available;
         }
 
@@ -215,28 +202,28 @@ namespace IronPlot
         /// </summary>
         internal void ArrangeAnnotations(Size finalSize)
         {
-            if (showAnnotationsLeft)
+            if (ShowAnnotationsLeft)
             {
-                Rect annotationsLeftRect = new Rect(new Point(0, 0),
+                var annotationsLeftRect = new Rect(new Point(0, 0),
                     new Point(LegendRegion.Left, finalSize.Height));
                 AnnotationsLeft.Arrange(annotationsLeftRect);
             }
-            if (showAnnotationsRight)
+            if (ShowAnnotationsRight)
             {
-                Rect annotationsRightRect = new Rect(new Point(finalSize.Width - LegendRegion.Right, 0),
+                var annotationsRightRect = new Rect(new Point(finalSize.Width - LegendRegion.Right, 0),
                     new Point(finalSize.Width, finalSize.Height));
                 AnnotationsRight.Arrange(annotationsRightRect);
             }
             else AnnotationsRight.Arrange(new Rect());
-            if (showAnnotationsTop)
+            if (ShowAnnotationsTop)
             {
-                Rect annotationsTopRect = new Rect(new Point(0, 0),
+                var annotationsTopRect = new Rect(new Point(0, 0),
                     new Point(finalSize.Width, LegendRegion.Top));
                 AnnotationsTop.Arrange(annotationsTopRect);
             }
-            if (showAnnotationsBottom)
+            if (ShowAnnotationsBottom)
             {
-                Rect annotationsBottomRect = new Rect(new Point(0, finalSize.Height - LegendRegion.Bottom),
+                var annotationsBottomRect = new Rect(new Point(0, finalSize.Height - LegendRegion.Bottom),
                     new Point(finalSize.Width, finalSize.Height));
                 AnnotationsBottom.Arrange(annotationsBottomRect);
             }

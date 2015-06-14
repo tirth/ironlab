@@ -1,13 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 
 namespace IronPlot
 {
-    public partial class Title : ContentControl
+    public class Title : ContentControl
     {
 #if !SILVERLIGHT
         /// <summary>
@@ -19,14 +15,5 @@ namespace IronPlot
         }
 
 #endif
-        /// <summary>
-        /// Initializes a new instance of the Title class.
-        /// </summary>
-        public Title()
-        {
-#if SILVERLIGHT
-            DefaultStyleKey = typeof(Title);
-#endif
-        }
     }
 }

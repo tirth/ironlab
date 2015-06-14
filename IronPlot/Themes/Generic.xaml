@@ -33,7 +33,7 @@
                     <GradientStop Color="LightGray" Offset="1.0" />
                 </LinearGradientBrush>
                 -->
-                <SolidColorBrush Color="White"></SolidColorBrush>
+                <SolidColorBrush Color="White" />
             </Setter.Value>
         </Setter>    
         <Setter Property="TitleStyle">
@@ -56,7 +56,7 @@
                             </Grid.RowDefinitions>
                             <local:Title Grid.Row="0" x:Name="HeaderContent" Content="{TemplateBinding Header}" ContentTemplate="{TemplateBinding HeaderTemplate}" Style="{TemplateBinding TitleStyle}" />
                             <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" BorderThickness="0" Padding="0" IsTabStop="False">
-                                <StackPanel IsItemsHost="True" x:Name="Items" Orientation="{TemplateBinding Orientation}" Margin="5,5,5,5"></StackPanel>
+                                <StackPanel IsItemsHost="True" x:Name="Items" Orientation="{TemplateBinding Orientation}" Margin="5,5,5,5" />
                             </ScrollViewer>
                         </Grid>
                     </Border>
@@ -74,8 +74,8 @@
                     <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
                         <StackPanel Orientation="Horizontal">
                             <local:Title Content="{TemplateBinding Content}" VerticalAlignment="Center" Margin="0 0 2 0"/>
-                            <TextBlock x:Name="PART_ItemTitle" Text="{Binding Path=(local:LegendItem.Title), RelativeSource={RelativeSource TemplatedParent}, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}" VerticalAlignment="Center" Margin="5 0 5 0"></TextBlock>
-                            <!--
+                            <TextBlock x:Name="PART_ItemTitle" Text="{Binding Path=(local:LegendItem.Title), RelativeSource={RelativeSource TemplatedParent}, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}" VerticalAlignment="Center" Margin="5 0 5 0" />
+	                        <!--
                             <TextBlock Text="{TemplateBinding Title}"></TextBlock>
                             -->
                         </StackPanel>
@@ -92,8 +92,7 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="local:AxisLabel">
-                    <TextBlock Text="{TemplateBinding FormattedContent}">
-                    </TextBlock>
+                    <TextBlock Text="{TemplateBinding FormattedContent}" />
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
@@ -116,7 +115,7 @@
             <Setter.Value>
                 <ControlTemplate TargetType="local:PlotPointAnnotation">
                     <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
-                        <TextBlock Text="{TemplateBinding Annotation}"></TextBlock>
+                        <TextBlock Text="{TemplateBinding Annotation}" />
                     </Border>
                 </ControlTemplate>
             </Setter.Value>

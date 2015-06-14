@@ -2,14 +2,9 @@
 
 using System;
 using System.Windows;
-using System.Collections.Generic;
-using System.Windows.Media;
-using System.Linq;
-using System.Text;
-using SharpDX;
-using SharpDX.Direct3D9;
-using System.Windows.Media.Media3D;
 using System.Windows.Data;
+using System.Windows.Media.Media3D;
+using SharpDX.Direct3D9;
 
 namespace IronPlot.Plotting3D
 {
@@ -27,7 +22,7 @@ namespace IronPlot.Plotting3D
 
     public class Model3D : DependencyObject, IViewportImage, IBoundable3D
     {
-        internal ViewportImage viewportImage;
+        internal ViewportImage ViewportImage;
         protected Device graphicsDevice;
         protected I2DLayer layer2D;
         protected Cuboid bounds;
@@ -65,22 +60,22 @@ namespace IronPlot.Plotting3D
         {
             if (viewportImage == null)
             {
-                this.DisposeDisposables();
-                this.viewportImage = null;
-                this.graphicsDevice = null;
-                this.layer2D = null;
-                Children.viewportImage = null;
+                DisposeDisposables();
+                ViewportImage = null;
+                graphicsDevice = null;
+                layer2D = null;
+                Children.ViewportImage = null;
             }
             else
             {                
-                this.graphicsDevice = viewportImage.GraphicsDevice;
-                this.layer2D = viewportImage.Layer2D;
+                graphicsDevice = viewportImage.GraphicsDevice;
+                layer2D = viewportImage.Layer2D;
                 OnViewportImageChanged(viewportImage);
                 BindToViewportImage();
-                Children.viewportImage = viewportImage;
-                this.RecreateDisposables();
+                Children.ViewportImage = viewportImage;
+                RecreateDisposables();
             }
-            foreach (Model3D model in this.Children)
+            foreach (var model in Children)
             {
                 model.RecursiveSetViewportImage(viewportImage);
             }
@@ -91,7 +86,7 @@ namespace IronPlot.Plotting3D
         internal void RecursiveSetResolution(int dpi)
         {
             if (this is IResolutionDependent) (this as IResolutionDependent).SetResolution(dpi);
-            foreach (Model3D model in this.Children)
+            foreach (var model in Children)
             {
                 model.RecursiveSetResolution(dpi);
             }
@@ -100,7 +95,7 @@ namespace IronPlot.Plotting3D
         internal void RecursiveDisposeDisposables()
         {
             DisposeDisposables();
-            foreach (Model3D model in this.Children)
+            foreach (var model in Children)
             {
                 model.RecursiveDisposeDisposables();
             }
@@ -109,7 +104,7 @@ namespace IronPlot.Plotting3D
         internal void RecursiveRecreateDisposables()
         {
             RecreateDisposables();
-            foreach (Model3D model in this.Children)
+            foreach (var model in Children)
             {
                 model.RecursiveRecreateDisposables();
             }
@@ -117,41 +112,32 @@ namespace IronPlot.Plotting3D
 
         internal void BindToViewportImage()
         {
-            Binding bindingTransform = new Binding("ModelToWorld");
-            bindingTransform.Source = viewportImage;
+            var bindingTransform = new Binding("ModelToWorld");
+            bindingTransform.Source = ViewportImage;
             bindingTransform.Mode = BindingMode.OneWay;
-            BindingOperations.SetBinding(this, Model3D.ModelToWorldProperty, bindingTransform);
-            RenderRequested += viewportImage.RequestRender;
+            BindingOperations.SetBinding(this, ModelToWorldProperty, bindingTransform);
+            RenderRequested += ViewportImage.RequestRender;
         }
 
         internal void RemoveBindToViewportImage()
         {
-            if (viewportImage != null)
+            if (ViewportImage != null)
             {
-                BindingOperations.ClearBinding(this, Model3D.ModelToWorldProperty);
-                RenderRequested -= viewportImage.RequestRender;
+                BindingOperations.ClearBinding(this, ModelToWorldProperty);
+                RenderRequested -= ViewportImage.RequestRender;
             }
         }
         #endregion
 
-        public I2DLayer Layer2D
-        {
-            get { return layer2D; }
-        }
+        public I2DLayer Layer2D => layer2D;
 
-        public Cuboid Bounds
-        {
-            get { return bounds; }
-        }
+        public Cuboid Bounds => bounds;
 
-        public Device GraphicsDevice
-        {
-            get { return graphicsDevice; }
-        }
+        public Device GraphicsDevice => graphicsDevice;
 
-        protected bool geometryChanged = true;
+        protected bool GeometryChanged = true;
 
-        static object drawLock = new object();
+        static object _drawLock = new object();
 
         public event OnDrawEventHandler OnDraw;
 
@@ -174,7 +160,7 @@ namespace IronPlot.Plotting3D
         public static readonly DependencyProperty ModelToWorldProperty =
             DependencyProperty.Register("ModelToWorld",
             typeof(MatrixTransform3D), typeof(Model3D),
-            new PropertyMetadata((MatrixTransform3D)MatrixTransform3D.Identity,
+            new PropertyMetadata((MatrixTransform3D)Transform3D.Identity,
                 OnModelToWorldChanged));
 
         public MatrixTransform3D ModelToWorld
@@ -190,7 +176,7 @@ namespace IronPlot.Plotting3D
 
         protected virtual void OnModelToWorldChanged()
         {
-            geometryChanged = true;
+            GeometryChanged = true;
             RequestRender(EventArgs.Empty);
         }
 
@@ -208,12 +194,12 @@ namespace IronPlot.Plotting3D
         internal virtual void OnViewportImageChanged(ViewportImage newViewportImage)
         {
             RemoveBindToViewportImage();
-            viewportImage = newViewportImage;
-            this.graphicsDevice = (viewportImage == null) ? null : viewportImage.GraphicsDevice;
-            this.layer2D = (viewportImage == null) ? null : viewportImage.Layer2D;
+            ViewportImage = newViewportImage;
+            graphicsDevice = (ViewportImage == null) ? null : ViewportImage.GraphicsDevice;
+            layer2D = (ViewportImage == null) ? null : ViewportImage.Layer2D;
             BindToViewportImage();
-            Children.viewportImage = (viewportImage == null) ? null : viewportImage;
-            geometryChanged = false;
+            Children.ViewportImage = (ViewportImage == null) ? null : ViewportImage;
+            GeometryChanged = false;
         }
 
         /// <summary>
@@ -229,12 +215,12 @@ namespace IronPlot.Plotting3D
         /// </summary>
         public virtual void Draw()
         {
-            if (geometryChanged)
+            if (GeometryChanged)
             {
-                geometryChanged = false;
+                GeometryChanged = false;
                 UpdateGeometry();
             }
-            foreach (Model3D child in Children)
+            foreach (var child in Children)
             {
                 if (child.IsVisible) child.Draw();
             }

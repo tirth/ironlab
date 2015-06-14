@@ -1,18 +1,7 @@
 ﻿// Copyright (c) 2010 Joe Moorhouse
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
+
 #if ILNumerics
 using ILNumerics;
 using ILNumerics.Storage;
@@ -39,10 +28,10 @@ namespace IronPlot
         
         // Calculation coefficients once, interpolate multiple times
         // Different sets for different interpolation types to allow simultaneous use
-        protected double[] linearSplineCoefficients = null;
-        protected double[] cubicSplineCoefficients = null;
-        protected double[] monotoneCubicSplineCoefficients = null;
-        protected double[] hermiteSplineCoefficients = null;
+        protected double[] LinearSplineCoefficients;
+        protected double[] CubicSplineCoefficients;
+        protected double[] MonotoneCubicSplineCoefficients;
+        protected double[] HermiteSplineCoefficients = null;
         
         /// <summary>Calculates interpolated values using Linear Interpolation</summary>
         /// <param name="x">X values at which interpolated values are required</param>
@@ -51,13 +40,13 @@ namespace IronPlot
         /// </remarks>
         public double[] GetValuesLinear(double[] xi)
         {
-            if (linearSplineCoefficients == null) UpdateLinearSplineCoefficients();
+            if (LinearSplineCoefficients == null) UpdateLinearSplineCoefficients();
             
-            double[] interpolatedValues = new double[xi.Length];
-            for (int i = 0; i < xi.Length; ++i)
+            var interpolatedValues = new double[xi.Length];
+            for (var i = 0; i < xi.Length; ++i)
             {
-                double xit = xi[i];
-                int p = 0; int r = n - 1; int q = 0;       
+                var xit = xi[i];
+                var p = 0; var r = N - 1; var q = 0;       
                 while (p != r - 1)
                 {
                     q = (p + r) / 2;
@@ -66,7 +55,7 @@ namespace IronPlot
                 }
                 xit = xit - x[p];
                 q = p * 2;
-                interpolatedValues[i] = linearSplineCoefficients[q] + xit * linearSplineCoefficients[q + 1];
+                interpolatedValues[i] = LinearSplineCoefficients[q] + xit * LinearSplineCoefficients[q + 1];
             }
             return interpolatedValues;
         }
@@ -80,8 +69,8 @@ namespace IronPlot
         public static int GetInterpolatedIndex(double[] x, double xi)
         {
             if (xi < x[0]) return 0;
-            else if (xi >= x[x.Length - 1]) return x.Length - 1; 
-            int p = 0; int r = x.Length - 1; int q = 0;
+            if (xi >= x[x.Length - 1]) return x.Length - 1;
+            var p = 0; var r = x.Length - 1; var q = 0;
             while (p != r - 1)
             {
                 q = (p + r) / 2;
@@ -134,13 +123,13 @@ namespace IronPlot
         public double[] GetValuesCubicSpline(double[] xi, BoundaryType leftBoundaryType, double leftBoundaryTypeParameter,
             BoundaryType rightBoundaryType, double rightBoundaryTypeParameter)
         {
-            if (cubicSplineCoefficients == null) UpdateCubicSplineCoefficients(leftBoundaryType, leftBoundaryTypeParameter, rightBoundaryType, rightBoundaryTypeParameter);
+            if (CubicSplineCoefficients == null) UpdateCubicSplineCoefficients(leftBoundaryType, leftBoundaryTypeParameter, rightBoundaryType, rightBoundaryTypeParameter);
             
-            double[] interpolatedValues = new double[xi.Length];
-            for (int i = 0; i < xi.Length; ++i)
+            var interpolatedValues = new double[xi.Length];
+            for (var i = 0; i < xi.Length; ++i)
             {
-                double xit = xi[i];
-                int p = 0; int r = n - 1; int q = 0;
+                var xit = xi[i];
+                var p = 0; var r = N - 1; var q = 0;
                 while (p != r - 1)
                 {
                     q = (p + r) / 2;
@@ -149,8 +138,8 @@ namespace IronPlot
                 }
                 xit = xit - x[p];
                 q = p * 4;
-                interpolatedValues[i] = cubicSplineCoefficients[q] + xit * (cubicSplineCoefficients[q + 1]
-                    + xit * (cubicSplineCoefficients[q + 2] + xit * cubicSplineCoefficients[q + 3]));
+                interpolatedValues[i] = CubicSplineCoefficients[q] + xit * (CubicSplineCoefficients[q + 1]
+                    + xit * (CubicSplineCoefficients[q + 2] + xit * CubicSplineCoefficients[q + 3]));
             }
             return interpolatedValues;
         }
@@ -162,13 +151,13 @@ namespace IronPlot
         /// </remarks>
         public double[] GetValuesMonotoneCubicSpline(double[] xi)
         {
-            if (monotoneCubicSplineCoefficients == null)  UpdateMonotoneCubicSplineCoefficients();
+            if (MonotoneCubicSplineCoefficients == null)  UpdateMonotoneCubicSplineCoefficients();
 
-            double[] interpolatedValues = new double[xi.Length];
-            for (int i = 0; i < xi.Length; ++i)
+            var interpolatedValues = new double[xi.Length];
+            for (var i = 0; i < xi.Length; ++i)
             {
-                double xit = xi[i];
-                int p = 0; int r = n - 1; int q = 0;
+                var xit = xi[i];
+                var p = 0; var r = N - 1; var q = 0;
                 while (p != r - 1)
                 {
                     q = (p + r) / 2;
@@ -177,8 +166,8 @@ namespace IronPlot
                 }
                 xit = xit - x[p];
                 q = p * 4;
-                interpolatedValues[i] = monotoneCubicSplineCoefficients[q] + xit * (monotoneCubicSplineCoefficients[q + 1]
-                    + xit * (monotoneCubicSplineCoefficients[q + 2] + xit * monotoneCubicSplineCoefficients[q + 3]));
+                interpolatedValues[i] = MonotoneCubicSplineCoefficients[q] + xit * (MonotoneCubicSplineCoefficients[q + 1]
+                    + xit * (MonotoneCubicSplineCoefficients[q + 2] + xit * MonotoneCubicSplineCoefficients[q + 3]));
             }
             return interpolatedValues;
         }
@@ -186,11 +175,11 @@ namespace IronPlot
         /// <summary>Update or create coefficients for linear spline</summary>
         public void UpdateLinearSplineCoefficients()
         {
-            linearSplineCoefficients = new double[2 * n];
-            for (int i = 0; i <= n - 2; i++)
+            LinearSplineCoefficients = new double[2 * N];
+            for (var i = 0; i <= N - 2; i++)
             {
-                linearSplineCoefficients[2 * i + 0] = y[i];
-                linearSplineCoefficients[2 * i + 1] = (y[i + 1] - y[i]) / (x[i + 1] - x[i]);
+                LinearSplineCoefficients[2 * i + 0] = y[i];
+                LinearSplineCoefficients[2 * i + 1] = (y[i + 1] - y[i]) / (x[i + 1] - x[i]);
             }
         }
 
@@ -201,14 +190,14 @@ namespace IronPlot
             // TODO Raise error if < 2 points
             // Sort if points are unsorted?
 
-            double[] a1 = new double[n];
-            double[] a2 = new double[n];
-            double[] a3 = new double[n];
-            double[] b = new double[n];
-            double[] deriv = new double[n];
+            var a1 = new double[N];
+            var a2 = new double[N];
+            var a3 = new double[N];
+            var b = new double[N];
+            var deriv = new double[N];
 
             // If 2 points, apply parabolic end conditions
-            if (n == 2)
+            if (N == 2)
             {
                 leftBoundaryType = BoundaryType.Parabolic;
                 rightBoundaryType = BoundaryType.Parabolic;
@@ -238,7 +227,7 @@ namespace IronPlot
             }
             #endregion
 
-            for (int i = 1; i <= n - 2; i++)
+            for (var i = 1; i <= N - 2; i++)
             {
                 a1[i] = x[i + 1] - x[i];
                 a2[i] = 2 * (x[i + 1] - x[i - 1]);
@@ -250,45 +239,45 @@ namespace IronPlot
             #region RightBoundary
             if (rightBoundaryType == BoundaryType.Parabolic)
             {
-                a1[n - 1] = 1;
-                a2[n - 1] = 1;
-                a3[n - 1] = 0;
-                b[n - 1] = 2 * (y[n - 1] - y[n - 2]) / (x[n - 1] - x[n - 2]);
+                a1[N - 1] = 1;
+                a2[N - 1] = 1;
+                a3[N - 1] = 0;
+                b[N - 1] = 2 * (y[N - 1] - y[N - 2]) / (x[N - 1] - x[N - 2]);
             }
             if (rightBoundaryType == BoundaryType.FirstDerivativeSpecified)
             {
-                a1[n - 1] = 0;
-                a2[n - 1] = 1;
-                a3[n - 1] = 0;
-                b[n - 1] = rightBoundaryTypeParameter;
+                a1[N - 1] = 0;
+                a2[N - 1] = 1;
+                a3[N - 1] = 0;
+                b[N - 1] = rightBoundaryTypeParameter;
             }
             if (rightBoundaryType == BoundaryType.SecondDerivativeSpecified)
             {
-                a1[n - 1] = 1;
-                a2[n - 1] = 2;
-                a3[n - 1] = 0;
-                b[n - 1] = 3 * (y[n - 1] - y[n - 2]) / (x[n - 1] - x[n - 2]) 
-                    + 0.5 * rightBoundaryTypeParameter * (x[n - 1] - x[n - 2]);
+                a1[N - 1] = 1;
+                a2[N - 1] = 2;
+                a3[N - 1] = 0;
+                b[N - 1] = 3 * (y[N - 1] - y[N - 2]) / (x[N - 1] - x[N - 2]) 
+                    + 0.5 * rightBoundaryTypeParameter * (x[N - 1] - x[N - 2]);
             }
             #endregion
 
             double temp = 0;
             
             a1[0] = 0;
-            a3[n - 1] = 0;
-            for (int i = 1; i <= n - 1; i++)
+            a3[N - 1] = 0;
+            for (var i = 1; i <= N - 1; i++)
             {
                 temp = a1[i] / a2[i - 1];
                 a2[i] = a2[i] - temp * a3[i - 1];
                 b[i] = b[i] - temp * b[i - 1];
             }
-            deriv[n - 1] = b[n - 1] / a2[n - 1];
-            for (int i = n - 2; i >= 0; i--)
+            deriv[N - 1] = b[N - 1] / a2[N - 1];
+            for (var i = N - 2; i >= 0; i--)
             {
                 deriv[i] = (b[i] - a3[i] * deriv[i + 1]) / a2[i];
             }
 
-            cubicSplineCoefficients = GetHermiteSplineCoefficients(deriv);
+            CubicSplineCoefficients = GetHermiteSplineCoefficients(deriv);
         }
 
         protected double[] GetHermiteSplineCoefficients(double[] deriv)
@@ -296,8 +285,8 @@ namespace IronPlot
             double delta = 0;
             double delta2 = 0;
             double delta3 = 0;
-            double[] coeffs = new double[(n - 1) * 4];
-            for (int i = 0; i <= n - 2; i++)
+            var coeffs = new double[(N - 1) * 4];
+            for (var i = 0; i <= N - 2; i++)
             {
                 delta = x[i + 1] - x[i];
                 delta2 = delta * delta;
@@ -313,20 +302,20 @@ namespace IronPlot
 
         public void UpdateMonotoneCubicSplineCoefficients()
         {
-            double[] a1 = new double[n]; // secant
-            double[] a2 = new double[n]; // derivative
+            var a1 = new double[N]; // secant
+            var a2 = new double[N]; // derivative
             a1[0] = (y[1] - y[0]) / (x[1] - x[0]);
             a2[0] = a1[0];
-            for (int i = 1; i < n - 3; i++)
+            for (var i = 1; i < N - 3; i++)
             {
                 a1[i] = (y[i + 1] - y[i]) / (x[i + 1] - x[i]);
                 a2[i] = (a1[i - 1] + a1[i]) / 2.0;
             }
-            a1[n - 2] = (y[n-1] - y[n-2]) / (x[n-1] - x[n-2]);
-            a2[n - 2] = (a1[n - 3] + a1[n - 2]) / 2.0;
-            a2[n - 1] = a1[n - 2];
+            a1[N - 2] = (y[N-1] - y[N-2]) / (x[N-1] - x[N-2]);
+            a2[N - 2] = (a1[N - 3] + a1[N - 2]) / 2.0;
+            a2[N - 1] = a1[N - 2];
             double alpha, beta, dist, tau;
-            for (int i = 0; i < n - 2; i++)
+            for (var i = 0; i < N - 2; i++)
             {
                 alpha = a2[i] / a1[i];
                 beta = a2[i + 1] / a1[i];
@@ -338,7 +327,7 @@ namespace IronPlot
                     a2[i + 1] = tau * beta * a1[i];
                 }
             }
-            monotoneCubicSplineCoefficients = GetHermiteSplineCoefficients(a2);
+            MonotoneCubicSplineCoefficients = GetHermiteSplineCoefficients(a2);
         }
     }
 }

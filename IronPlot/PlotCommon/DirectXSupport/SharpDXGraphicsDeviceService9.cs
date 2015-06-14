@@ -2,21 +2,18 @@
 
 using System;
 using System.Diagnostics;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+using System.Runtime.InteropServices;
 using System.Threading;
+using System.Windows.Forms;
 using SharpDX;
 using SharpDX.Direct3D9;
-using System.Windows.Interop;
-using System.Windows.Forms;
 
 namespace IronPlot
 {
     // Summary:
     //     Defines a mechanism for retrieving GraphicsDevice objects. Reference page
     //     contains links to related code samples.
-    public interface ISharpDXGraphicsDeviceService
+    public interface ISharpDxGraphicsDeviceService
     {
         // Summary:
         //     Retrieves a graphcs device.
@@ -42,13 +39,13 @@ namespace IronPlot
     public enum DirectXStatus
     {
         Available,
-        Unavailable_RemoteSession,
-        Unavailable_LowTier,
-        Unavailable_MissingDirectX,
-        Unavailable_Unknown
+        UnavailableRemoteSession,
+        UnavailableLowTier,
+        UnavailableMissingDirectX,
+        UnavailableUnknown
     };
 
-    public class Direct3DX9NotFoundException : Exception { }
+    public class Direct3Dx9NotFoundException : Exception { }
 
     // The IGraphicsDeviceService interface requires a DeviceCreated event, but we
     // always just create the device inside our constructor, so we have no place to
@@ -64,26 +61,26 @@ namespace IronPlot
     /// interface, which provides notification events for when the device is reset
     /// or disposed.
     /// </summary>
-    public class SharpDXGraphicsDeviceService9 : ISharpDXGraphicsDeviceService
+    public class SharpDxGraphicsDeviceService9 : ISharpDxGraphicsDeviceService
     {
         #region Fields
         // device settings
-        Format adapterFormat = Format.X8R8G8B8;
-        Format backbufferFormat = Format.A8R8G8B8; // SurfaceFormat.Color XNA
-        Format depthStencilFormat = Format.D16; // DepthFormat.Depth24 XNA
-        CreateFlags createFlags = CreateFlags.Multithreaded | CreateFlags.FpuPreserve;
-        private PresentParameters presentParameters;
+        readonly Format _adapterFormat = Format.X8R8G8B8;
+        readonly Format _backbufferFormat = Format.A8R8G8B8; // SurfaceFormat.Color XNA
+        readonly Format _depthStencilFormat = Format.D16; // DepthFormat.Depth24 XNA
+        CreateFlags _createFlags = CreateFlags.Multithreaded | CreateFlags.FpuPreserve;
+        private PresentParameters _presentParameters;
 
         // Singleton device service instance.
-        static SharpDXGraphicsDeviceService9 singletonInstance;
+        static SharpDxGraphicsDeviceService9 _singletonInstance;
 
         // Keep track of how many controls are sharing the singletonInstance.
-        static int referenceCount;
+        static int _referenceCount;
 
-        private Direct3D direct3D;
-        private Direct3DEx direct3DEx;
-        private Device device;
-        private DeviceEx deviceEx;
+        private Direct3D _direct3D;
+        private Direct3DEx _direct3DEx;
+        private Device _device;
+        private DeviceEx _deviceEx;
 
 
         #endregion
@@ -113,9 +110,8 @@ namespace IronPlot
             get
             {
                 if (UseDeviceEx)
-                    return direct3DEx;
-                else
-                    return direct3D;
+                    return _direct3DEx;
+                return _direct3D;
             }
         }
 
@@ -127,25 +123,21 @@ namespace IronPlot
             get
             {
                 if (UseDeviceEx)
-                    return deviceEx;
-                else
-                    return device;
+                    return _deviceEx;
+                return _device;
             }
         }
 
         /// <summary>
         /// Gets the current presentation parameters.
         /// </summary>
-        public PresentParameters PresentParameters
-        {
-            get { return presentParameters; }
-        }
+        public PresentParameters PresentParameters => _presentParameters;
 
         /// <summary>
         /// Constructor is private, because this is a singleton class:
         /// client controls should use the public AddRef method instead.
         /// </summary>
-        SharpDXGraphicsDeviceService9(int width, int height)
+        SharpDxGraphicsDeviceService9(int width, int height)
         {
             InitializeDirect3D();
             InitializeDevice(width, height);
@@ -162,7 +154,7 @@ namespace IronPlot
         /// </summary>
         private void InitializeDirect3D()
         {
-            DirectXStatus = DirectXStatus.Unavailable_Unknown;
+            DirectXStatus = DirectXStatus.UnavailableUnknown;
 
             ReleaseDevice();
             ReleaseDirect3D();
@@ -187,24 +179,24 @@ namespace IronPlot
 #else
             try
             {
-                direct3DEx = new Direct3DEx();
+                _direct3DEx = new Direct3DEx();
                 UseDeviceEx = true;
             }
             catch
             {
                 try
                 {
-                    direct3D = new Direct3D();
+                    _direct3D = new Direct3D();
                     UseDeviceEx = false;
                 }
-                catch (Direct3DX9NotFoundException) 
+                catch (Direct3Dx9NotFoundException) 
                 {
-                    DirectXStatus = DirectXStatus.Unavailable_MissingDirectX;
+                    DirectXStatus = DirectXStatus.UnavailableMissingDirectX;
                     return;
                 }
                 catch
                 {
-                    DirectXStatus = DirectXStatus.Unavailable_Unknown;
+                    DirectXStatus = DirectXStatus.UnavailableUnknown;
                     return;
                 }
             }
@@ -213,7 +205,7 @@ namespace IronPlot
             bool ok;
             Result result;
 
-            ok = Direct3D.CheckDeviceType(0, DeviceType.Hardware, adapterFormat, backbufferFormat, true, out result);
+            ok = Direct3D.CheckDeviceType(0, DeviceType.Hardware, _adapterFormat, _backbufferFormat, true, out result);
             if (!ok)
             {
                 //const int D3DERR_NOTAVAILABLE = -2005530518;
@@ -227,22 +219,20 @@ namespace IronPlot
                 return;
             }
 
-            ok = Direct3D.CheckDepthStencilMatch(0, DeviceType.Hardware, adapterFormat, backbufferFormat, depthStencilFormat, out result);
+            ok = Direct3D.CheckDepthStencilMatch(0, DeviceType.Hardware, _adapterFormat, _backbufferFormat, _depthStencilFormat, out result);
             if (!ok)
             {
                 ReleaseDirect3D();
                 return;
             }
 
-            Capabilities deviceCaps = Direct3D.GetDeviceCaps(0, DeviceType.Hardware);
+            var deviceCaps = Direct3D.GetDeviceCaps(0, DeviceType.Hardware);
             if ((deviceCaps.DeviceCaps & DeviceCaps.HWTransformAndLight) != 0)
-                createFlags |= CreateFlags.HardwareVertexProcessing;
+                _createFlags |= CreateFlags.HardwareVertexProcessing;
             else
-                createFlags |= CreateFlags.SoftwareVertexProcessing;
+                _createFlags |= CreateFlags.SoftwareVertexProcessing;
 
             DirectXStatus = DirectXStatus.Available;
-
-            return;
         }
 
         /// <summary>
@@ -257,34 +247,34 @@ namespace IronPlot
 
             ReleaseDevice();
 
-            IntPtr windowHandle = (new Form()).Handle;
+            var windowHandle = (new Form()).Handle;
             //HwndSource hwnd = new HwndSource(0, 0, 0, 0, 0, width, height, "SharpDXControl", IntPtr.Zero);
 
-            presentParameters = new PresentParameters();
-            if (UseDeviceEx) presentParameters.SwapEffect = SwapEffect.Discard;
-            else presentParameters.SwapEffect = SwapEffect.Copy;
+            _presentParameters = new PresentParameters();
+            if (UseDeviceEx) _presentParameters.SwapEffect = SwapEffect.Discard;
+            else _presentParameters.SwapEffect = SwapEffect.Copy;
             
-            presentParameters.DeviceWindowHandle = windowHandle;
-            presentParameters.Windowed = true;
-            presentParameters.BackBufferWidth = Math.Max(width, 1);
-            presentParameters.BackBufferHeight = Math.Max(height, 1);
-            presentParameters.BackBufferFormat = backbufferFormat;
-            presentParameters.AutoDepthStencilFormat = depthStencilFormat;
-            presentParameters.EnableAutoDepthStencil = true;
-            presentParameters.PresentationInterval = PresentInterval.Immediate;
-            presentParameters.MultiSampleType = MultisampleType.None;
+            _presentParameters.DeviceWindowHandle = windowHandle;
+            _presentParameters.Windowed = true;
+            _presentParameters.BackBufferWidth = Math.Max(width, 1);
+            _presentParameters.BackBufferHeight = Math.Max(height, 1);
+            _presentParameters.BackBufferFormat = _backbufferFormat;
+            _presentParameters.AutoDepthStencilFormat = _depthStencilFormat;
+            _presentParameters.EnableAutoDepthStencil = true;
+            _presentParameters.PresentationInterval = PresentInterval.Immediate;
+            _presentParameters.MultiSampleType = MultisampleType.None;
             IsAntialiased = false;
             int qualityLevels;
-            if (Direct3D.CheckDeviceMultisampleType(0, DeviceType.Hardware, backbufferFormat, true, MultisampleType.EightSamples, out qualityLevels))
+            if (Direct3D.CheckDeviceMultisampleType(0, DeviceType.Hardware, _backbufferFormat, true, MultisampleType.EightSamples, out qualityLevels))
             {
-                presentParameters.MultiSampleType = MultisampleType.EightSamples;
-                presentParameters.MultiSampleQuality = qualityLevels - 1;
+                _presentParameters.MultiSampleType = MultisampleType.EightSamples;
+                _presentParameters.MultiSampleQuality = qualityLevels - 1;
                 IsAntialiased = true;
             }
-            else if (Direct3D.CheckDeviceMultisampleType(0, DeviceType.Hardware, backbufferFormat, true, MultisampleType.FourSamples, out qualityLevels))
+            else if (Direct3D.CheckDeviceMultisampleType(0, DeviceType.Hardware, _backbufferFormat, true, MultisampleType.FourSamples, out qualityLevels))
             {
-                presentParameters.MultiSampleType = MultisampleType.FourSamples;
-                presentParameters.MultiSampleQuality = qualityLevels - 1;
+                _presentParameters.MultiSampleType = MultisampleType.FourSamples;
+                _presentParameters.MultiSampleQuality = qualityLevels - 1;
                 IsAntialiased = false;
             }
 
@@ -293,51 +283,49 @@ namespace IronPlot
             {
                 if (UseDeviceEx)
                 {
-                    deviceEx = new DeviceEx((Direct3DEx)Direct3D, 0,
+                    _deviceEx = new DeviceEx((Direct3DEx)Direct3D, 0,
                        DeviceType.Hardware,
                        windowHandle,
-                       createFlags,
-                       presentParameters);
+                       _createFlags,
+                       _presentParameters);
                 }
                 else
                 {
-                    device = new Device(Direct3D, 0,
+                    _device = new Device(Direct3D, 0,
                        DeviceType.Hardware,
                        windowHandle,
-                       createFlags,
-                       presentParameters);
+                       _createFlags,
+                       _presentParameters);
                 }
             }
             catch (Exception) //Direct3D9Exception
             {
-                DirectXStatus = DirectXStatus.Unavailable_Unknown;
-                return;
+                DirectXStatus = DirectXStatus.UnavailableUnknown;
             }
-            return;
         }
 
         /// <summary>
         /// Gets a reference to the singleton instance.
         /// </summary>
-        public static SharpDXGraphicsDeviceService9 AddRef(int width, int height)
+        public static SharpDxGraphicsDeviceService9 AddRef(int width, int height)
         {
             // Increment the "how many controls sharing the device" reference count.
-            if (Interlocked.Increment(ref referenceCount) == 1)
+            if (Interlocked.Increment(ref _referenceCount) == 1)
             {
                 // If this is the first control to start using the
                 // device, we must create the singleton instance.
-                singletonInstance = new SharpDXGraphicsDeviceService9(width, height);
+                _singletonInstance = new SharpDxGraphicsDeviceService9(width, height);
             }
 
-            return singletonInstance;
+            return _singletonInstance;
         }
 
         /// <summary>
         /// Create a new GraphicsDeviceService and return reference to it
         /// </summary>
-        public static SharpDXGraphicsDeviceService9 RefToNew(int width, int height)
+        public static SharpDxGraphicsDeviceService9 RefToNew(int width, int height)
         {
-            return new SharpDXGraphicsDeviceService9(width, height);
+            return new SharpDxGraphicsDeviceService9(width, height);
         }
 
         /// <summary>
@@ -346,7 +334,7 @@ namespace IronPlot
         public void Release(bool disposing)
         {
             // Decrement the "how many controls sharing the device" reference count.
-            if (Interlocked.Decrement(ref referenceCount) == 0)
+            if (Interlocked.Decrement(ref _referenceCount) == 0)
             {
                 // If this is the last control to finish using the
                 // device, we should dispose the singleton instance.
@@ -369,16 +357,16 @@ namespace IronPlot
         /// </summary>
         public void RatchetResetDevice(int width, int height)
         {
-            ResetDevice(Math.Max(presentParameters.BackBufferWidth, width), Math.Max(presentParameters.BackBufferHeight, height));
+            ResetDevice(Math.Max(_presentParameters.BackBufferWidth, width), Math.Max(_presentParameters.BackBufferHeight, height));
         }
 
         public bool ResetIfNecessary()
         {
             int newWidth, newHeight;
             Tracker.GetSizeForMembers(out newWidth, out newHeight);
-            int currentWidth = presentParameters.BackBufferWidth;
-            int currentHeight = presentParameters.BackBufferHeight;
-            bool resetRequired = false;
+            var currentWidth = _presentParameters.BackBufferWidth;
+            var currentHeight = _presentParameters.BackBufferHeight;
+            var resetRequired = false;
             if (GraphicsDevice.TestCooperativeLevel() == ResultCode.DeviceNotReset) resetRequired = true;
             if (newWidth > currentWidth)
             {
@@ -407,11 +395,11 @@ namespace IronPlot
             if (DeviceResetting != null)
                 DeviceResetting(this, EventArgs.Empty);
 
-            presentParameters.BackBufferWidth = width;
-            presentParameters.BackBufferHeight = height;
+            _presentParameters.BackBufferWidth = width;
+            _presentParameters.BackBufferHeight = height;
 
-            if (UseDeviceEx) (GraphicsDevice as DeviceEx).ResetEx(ref presentParameters);
-            else GraphicsDevice.Reset(presentParameters);
+            if (UseDeviceEx) (GraphicsDevice as DeviceEx).ResetEx(ref _presentParameters);
+            else GraphicsDevice.Reset(_presentParameters);
 
             if (DeviceReset != null)
                 DeviceReset(this, EventArgs.Empty);
@@ -425,21 +413,21 @@ namespace IronPlot
 
         private void ReleaseDevice()
         {
-            if (device != null)
+            if (_device != null)
             {
-                if (!device.IsDisposed)
+                if (!_device.IsDisposed)
                 {
-                    device.Dispose();
-                    device = null;
+                    _device.Dispose();
+                    _device = null;
                 }
             }
 
-            if (deviceEx != null)
+            if (_deviceEx != null)
             {
-                if (!deviceEx.IsDisposed)
+                if (!_deviceEx.IsDisposed)
                 {
-                    deviceEx.Dispose();
-                    device = null;
+                    _deviceEx.Dispose();
+                    _device = null;
                 }
             }
 
@@ -448,30 +436,30 @@ namespace IronPlot
 
         private void ReleaseDirect3D()
         {
-            if (direct3D != null)
+            if (_direct3D != null)
             {
-                if (!direct3D.IsDisposed)
+                if (!_direct3D.IsDisposed)
                 {
-                    direct3D.Dispose();
-                    direct3D = null;
+                    _direct3D.Dispose();
+                    _direct3D = null;
                 }
             }
 
-            if (direct3DEx != null)
+            if (_direct3DEx != null)
             {
-                if (!direct3DEx.IsDisposed)
+                if (!_direct3DEx.IsDisposed)
                 {
-                    direct3DEx.Dispose();
-                    direct3DEx = null;
+                    _direct3DEx.Dispose();
+                    _direct3DEx = null;
                 }
             }
         }
 
         #region DLL imports
         // can't figure out how to access remote session status through .NET
-        [System.Runtime.InteropServices.DllImport("user32")]
+        [DllImport("user32")]
         private static extern int GetSystemMetrics(int smIndex);
-        private const int SM_REMOTESESSION = 0x1000;
+        private const int SmRemotesession = 0x1000;
         #endregion
     }
 }

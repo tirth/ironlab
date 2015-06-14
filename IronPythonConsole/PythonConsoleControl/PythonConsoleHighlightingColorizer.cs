@@ -1,17 +1,7 @@
 ﻿// Copyright (c) 2010 Joe Moorhouse
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Diagnostics;
-using System.Windows;
-using System.Windows.Media;
-using System.Windows.Threading;
-
-using ICSharpCode.AvalonEdit;
 using ICSharpCode.AvalonEdit.Document;
-using ICSharpCode.AvalonEdit.Rendering;
 using ICSharpCode.AvalonEdit.Highlighting;
 
 namespace PythonConsoleControl
@@ -21,7 +11,7 @@ namespace PythonConsoleControl
     /// </summary>
     public class PythonConsoleHighlightingColorizer : HighlightingColorizer
     {
-        TextDocument document;
+        readonly TextDocument _document;
 
         /// <summary>
         /// Creates a new HighlightingColorizer instance.
@@ -32,25 +22,23 @@ namespace PythonConsoleControl
         {
             if (document == null)
                 throw new ArgumentNullException("document");
-            this.document = document;
+            _document = document;
         }
 
         /// <inheritdoc/>
         protected override void ColorizeLine(DocumentLine line)
         {
-            IHighlighter highlighter = CurrentContext.TextView.Services.GetService(typeof(IHighlighter)) as IHighlighter;
-            string lineString = document.GetText(line);
+            var highlighter = CurrentContext.TextView.Services.GetService(typeof(IHighlighter)) as IHighlighter;
+            var lineString = _document.GetText(line);
             if (highlighter != null)
             {
                 if (lineString.Length < 3 || lineString.Substring(0, 3) == ">>>" || lineString.Substring(0, 3) == "...") {
-                    HighlightedLine hl = highlighter.HighlightLine(line.LineNumber);
-                    foreach (HighlightedSection section in hl.Sections)
+                    var hl = highlighter.HighlightLine(line.LineNumber);
+                    foreach (var section in hl.Sections)
                     {
                         ChangeLinePart(section.Offset, section.Offset + section.Length,
                                        visualLineElement => ApplyColorToElement(visualLineElement, section.Color));
                     }
-                }
-                else { // Could add foreground colour functionality here.
                 }
             }
         }

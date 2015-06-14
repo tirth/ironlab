@@ -1,19 +1,19 @@
 ﻿// Copyright (c) 2010 Joe Moorhouse
 
 using System;
-using System.Windows;
-using System.Diagnostics;
-using System.Collections;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
-using System.Text;
+using System.Runtime.InteropServices;
+using System.Threading;
+using System.Windows;
+using System.Windows.Media.Media3D;
+using System.Windows.Threading;
 using SharpDX;
 using SharpDX.Direct3D9;
-using System.Windows.Media.Media3D;
-using System.Runtime.InteropServices;
-using System.Drawing;
-using System.Windows.Threading;
-using System.Threading;
+using Light = SharpDX.Direct3D9.Light;
+using Material = SharpDX.Direct3D9.Material;
+
 #if ILNumerics
 using ILNumerics;
 using ILNumerics.Storage;
@@ -31,24 +31,24 @@ namespace IronPlot.Plotting3D
     /// </summary>
     public partial class SurfaceModel3D : Model3D
     {
-        VertexPositionNormalColor[] vertices;
-        Point3D[] modelVertices;
-        int lengthU, lengthV;
-        int[] indices;
-        protected VertexDeclaration vertexDeclaration;
-        protected VertexBuffer vertexBuffer;
-        protected int vertexBufferLength = -1;
-        protected IndexBuffer indexBuffer;
-        protected int indexBufferLength = -1;
-        protected ColourMap colourMap;
+        VertexPositionNormalColor[] _vertices;
+        Point3D[] _modelVertices;
+        int _lengthU, _lengthV;
+        int[] _indices;
+        protected VertexDeclaration VertexDeclaration;
+        protected VertexBuffer VertexBuffer;
+        protected int VertexBufferLength = -1;
+        protected IndexBuffer IndexBuffer;
+        protected int IndexBufferLength = -1;
+        protected ColourMap ColourMap;
         
         // This is only used if there is somewhere to display the bar (e.g. this is within a Plot3D) 
         protected ColourBar colourBar;
-        public ColourBar ColourBar { get { return colourBar; } }
-        DispatcherTimer colourMapUpdateTimer = new DispatcherTimer();
+        public ColourBar ColourBar => colourBar;
+        DispatcherTimer _colourMapUpdateTimer = new DispatcherTimer();
 
-        protected UInt16[] colourMapIndices;
-        protected List<SharpDX.Direct3D9.Light> lights;
+        protected UInt16[] ColourMapIndices;
+        protected List<Light> lights;
 
         private static readonly DependencyProperty SurfaceShadingProperty =
             DependencyProperty.Register("SurfaceShading",
@@ -68,7 +68,7 @@ namespace IronPlot.Plotting3D
             typeof(SurfaceModel3D),
             new PropertyMetadata((byte)0, OnTransparencyChanged));
 
-        public List<SharpDX.Direct3D9.Light> Lights
+        public List<Light> Lights
         {
             get 
             {
@@ -77,8 +77,8 @@ namespace IronPlot.Plotting3D
             }
         }
 
-        SharpDX.Direct3D9.Material material;
-        public SharpDX.Direct3D9.Material Material { get { return material; } set { material = value; } }
+        Material _material;
+        public Material Material { get { return _material; } set { _material = value; } }
 
         public SurfaceShading SurfaceShading
         {
@@ -100,7 +100,7 @@ namespace IronPlot.Plotting3D
         
         static void OnSurfaceShadingChanged(DependencyObject obj, DependencyPropertyChangedEventArgs args)
         {
-            SurfaceModel3D surface = obj as SurfaceModel3D;
+            var surface = obj as SurfaceModel3D;
             surface.CreateVertsAndInds();
             surface.SetColorFromIndices();
             surface.RecreateBuffers();
@@ -109,13 +109,13 @@ namespace IronPlot.Plotting3D
 
         static void OnMeshLinesChanged(DependencyObject obj, DependencyPropertyChangedEventArgs args)
         {
-            SurfaceModel3D surface = obj as SurfaceModel3D;
+            var surface = obj as SurfaceModel3D;
             surface.RequestRender(EventArgs.Empty);
         }
 
         static void OnTransparencyChanged(DependencyObject obj, DependencyPropertyChangedEventArgs args)
         {
-            SurfaceModel3D surface = obj as SurfaceModel3D;
+            var surface = obj as SurfaceModel3D;
             surface.SetColorFromIndices();
             surface.RecreateBuffers();
             surface.RequestRender(EventArgs.Empty);
@@ -132,13 +132,11 @@ namespace IronPlot.Plotting3D
         /// Constructs a surface primitive.
         /// </summary>
         public SurfaceModel3D(double[,] x, double[,] y, double[,] z)
-            : base()
         {
             InitializeSurface(x, y, z);
         }
 
         public SurfaceModel3D(double[] x, double[] y, double[,] z)
-            : base()
         {
             if (x.Length != z.GetLength(1)) throw new ArgumentException("Length of x vector must be equal to columns of z.");
             if (y.Length != z.GetLength(0)) throw new ArgumentException("Length of y vector must be equal to rows of z.");
@@ -162,18 +160,18 @@ namespace IronPlot.Plotting3D
 
         public SurfaceModel3D(IEnumerable<object> x, IEnumerable<object> y, IEnumerable<object> z)
         {
-            int[] xLengths = new int[3]; int[] yLengths = new int[3]; 
-            IEnumerable<double>[] imageEnumerators = new IEnumerable<double>[3];
-            IEnumerable<double>[] adjustedImageEnumerators = new IEnumerable<double>[3];
+            var xLengths = new int[3]; var yLengths = new int[3]; 
+            var imageEnumerators = new IEnumerable<double>[3];
+            var adjustedImageEnumerators = new IEnumerable<double>[3];
 
             imageEnumerators[0] = GeneralArray.ToImageEnumerator(x, out xLengths[0], out yLengths[0]);
             imageEnumerators[1] = GeneralArray.ToImageEnumerator(y, out xLengths[1], out yLengths[1]);
             imageEnumerators[2] = GeneralArray.ToImageEnumerator(z, out xLengths[2], out yLengths[2]);
             
-            int xLength = -1; int yLength = -1;
+            var xLength = -1; var yLength = -1;
             if (yLengths[0] == 0) xLength = xLengths[0];
             if (yLengths[1] == 0) yLength = xLengths[1];
-            for (int i = 0; i < 3; ++i)
+            for (var i = 0; i < 3; ++i)
             {
                 adjustedImageEnumerators[i] = imageEnumerators[i];
                 if (yLengths[i] != 0)
@@ -254,90 +252,90 @@ namespace IronPlot.Plotting3D
 
         protected void CreateMesh(IEnumerable<double> x, IEnumerable<double> y, IEnumerable<double> z, int xLength, int yLength)
         {
-            lengthU = xLength;
-            lengthV = yLength;
+            _lengthU = xLength;
+            _lengthV = yLength;
             bounds = new Cuboid(x.Min(), y.Min(), z.Min(), x.Max(), y.Max(), z.Max());
-            Cuboid modelBounds = new Cuboid(new System.Windows.Media.Media3D.Point3D(-10, -10, -10), new System.Windows.Media.Media3D.Point3D(10, 10, 10));
+            var modelBounds = new Cuboid(new Point3D(-10, -10, -10), new Point3D(10, 10, 10));
             UpdateModelVertices(x, y, z, xLength, yLength);
             CreateVertsAndInds();
-            colourMap = new ColourMap(ColourMapType.HSV, 256);
-            colourMapIndices = FalseColourImage.IEnumerableToIndexArray(z, xLength, yLength, 256);
+            ColourMap = new ColourMap(ColourMapType.Hsv, 256);
+            ColourMapIndices = FalseColourImage.EnumerableToIndexArray(z, xLength, yLength, 256);
             SetColorFromIndices();
-            colourMapUpdateTimer = new DispatcherTimer() { Interval = TimeSpan.FromSeconds(0.2) };
-            colourMapUpdateTimer.Tick += new EventHandler(colourMapUpdateTimer_Tick);
+            _colourMapUpdateTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(0.2) };
+            _colourMapUpdateTimer.Tick += colourMapUpdateTimer_Tick;
 
-            lights = new List<SharpDX.Direct3D9.Light>();
-            SharpDX.Direct3D9.Light light = new SharpDX.Direct3D9.Light() { Type = LightType.Directional };
+            lights = new List<Light>();
+            var light = new Light { Type = LightType.Directional };
             light.Diffuse = new Color4(0.4f, 0.4f, 0.4f, 1.0f);
             light.Direction = new Vector3(0.3f, 0.3f, -0.7f);
             light.Specular = new Color4(0.05f, 0.05f, 0.05f, 1.0f);
             lights.Add(light);
 
-            light = new SharpDX.Direct3D9.Light() { Type = LightType.Directional };
+            light = new Light { Type = LightType.Directional };
             light.Diffuse = new Color4(0.4f, 0.4f, 0.4f, 1.0f);
             light.Direction = new Vector3(-0.3f, -0.3f, -0.7f);
             light.Specular = new Color4(0.05f, 0.05f, 0.05f, 1.0f);
             lights.Add(light);
 
-            material = new SharpDX.Direct3D9.Material();
-            material.Specular = new Color4(0.0f, 0.0f, 0.0f, 1.0f);
-            material.Diffuse = new Color4(0.0f, 0.0f, 0.0f, 1.0f);
-            material.Ambient = new Color4(0.0f, 0.0f, 0.0f, 1.0f);
-            material.Power = 10;
+            _material = new Material();
+            _material.Specular = new Color4(0.0f, 0.0f, 0.0f, 1.0f);
+            _material.Diffuse = new Color4(0.0f, 0.0f, 0.0f, 1.0f);
+            _material.Ambient = new Color4(0.0f, 0.0f, 0.0f, 1.0f);
+            _material.Power = 10;
         }
 
         internal override void OnViewportImageChanged(ViewportImage newViewportImage)
         {
             // if the ViewportImage is owned by a Plot3D, we can add a ColourBar.
-            if (viewportImage != null && viewportImage.ViewPort3D != null && colourBar != null)
+            if (ViewportImage != null && ViewportImage.ViewPort3D != null && colourBar != null)
             {
-                viewportImage.ViewPort3D.Annotations.Remove(colourBar);
-                colourBar.ColourMapChanged -= new RoutedEventHandler(colourBar_ColourMapChanged);
+                ViewportImage.ViewPort3D.Annotations.Remove(colourBar);
+                colourBar.ColourMapChanged -= colourBar_ColourMapChanged;
             }
             base.OnViewportImageChanged(newViewportImage);
-            if (viewportImage.ViewPort3D != null)
+            if (ViewportImage.ViewPort3D != null)
             {
                 if (colourBar == null)
                 {
-                    colourBar = new ColourBar(colourMap);
+                    colourBar = new ColourBar(ColourMap);
                     colourBar.Min = bounds.Minimum.Z; colourBar.Max = bounds.Maximum.Z; 
-                    colourBar.ColourMapChanged += new RoutedEventHandler(colourBar_ColourMapChanged);
+                    colourBar.ColourMapChanged += colourBar_ColourMapChanged;
                 }
-                viewportImage.ViewPort3D.Annotations.Add(colourBar);
+                ViewportImage.ViewPort3D.Annotations.Add(colourBar);
             }
         }
        
         void colourBar_ColourMapChanged(object sender, RoutedEventArgs e)
         {
-            colourMapUpdateTimer.Start();
+            _colourMapUpdateTimer.Start();
         }
 
-        bool updateInProgress = false;
-        object updateLocker = new object();
+        bool _updateInProgress;
+        readonly object _updateLocker = new object();
 
         void colourMapUpdateTimer_Tick(object sender, EventArgs e)
         {
-            if (updateInProgress)
+            if (_updateInProgress)
             {
-                colourMapUpdateTimer.Start();
+                _colourMapUpdateTimer.Start();
                 return;
             }
-            updateInProgress = true;
-            colourMapUpdateTimer.Stop(); 
-            ThreadPool.QueueUserWorkItem(new WaitCallback(UpdateColours), new object());
+            _updateInProgress = true;
+            _colourMapUpdateTimer.Stop(); 
+            ThreadPool.QueueUserWorkItem(UpdateColours, new object());
         }
 
         private void UpdateColours(object state)
         {
-            lock (updateLocker)
+            lock (_updateLocker)
             {
                 SetColorFromIndices();
                 RecreateBuffers();
             }
-            Dispatcher.BeginInvoke(new Action(delegate()
+            Dispatcher.BeginInvoke(new Action(delegate
             {
                 RequestRender(EventArgs.Empty);
-                updateInProgress = false;
+                _updateInProgress = false;
             }));
         }
 
@@ -345,58 +343,58 @@ namespace IronPlot.Plotting3D
         {
             if (SurfaceShading == SurfaceShading.Smooth)
             {
-                int newVerticesLength = lengthU * lengthV * 2; // assume two-sided
-                int newIndicesLength = 2 * 6 * (lengthU - 1) * (lengthV - 1);
-                if (vertices == null || (vertices.Length != newVerticesLength)) vertices = new VertexPositionNormalColor[newVerticesLength];
-                if (indices == null || (indices.Length != newIndicesLength)) indices = new int[newIndicesLength];
+                var newVerticesLength = _lengthU * _lengthV * 2; // assume two-sided
+                var newIndicesLength = 2 * 6 * (_lengthU - 1) * (_lengthV - 1);
+                if (_vertices == null || (_vertices.Length != newVerticesLength)) _vertices = new VertexPositionNormalColor[newVerticesLength];
+                if (_indices == null || (_indices.Length != newIndicesLength)) _indices = new int[newIndicesLength];
                 UpdateVertsAndIndsSmooth(false, false);
             }
             else
             {
-                int newVerticesLength = 6 * (lengthU - 1) * (lengthV - 1);
-                int newIndicesLength = 2 * 6 * (lengthU - 1) * (lengthV - 1);
-                if (vertices == null || (vertices.Length != newVerticesLength)) vertices = new VertexPositionNormalColor[newVerticesLength];
-                if (indices == null || (indices.Length != newIndicesLength)) indices = new int[newIndicesLength];
+                var newVerticesLength = 6 * (_lengthU - 1) * (_lengthV - 1);
+                var newIndicesLength = 2 * 6 * (_lengthU - 1) * (_lengthV - 1);
+                if (_vertices == null || (_vertices.Length != newVerticesLength)) _vertices = new VertexPositionNormalColor[newVerticesLength];
+                if (_indices == null || (_indices.Length != newIndicesLength)) _indices = new int[newIndicesLength];
                 UpdateVertsAndIndsGeneral(false, false);
             }
         }
 
         protected void RecreateBuffers()
         {
-            if (viewportImage == null) return;
-            lock (updateLocker)
+            if (ViewportImage == null) return;
+            lock (_updateLocker)
             {
                 Pool pool;
-                if (viewportImage.GraphicsDeviceService.UseDeviceEx == true) pool = Pool.Default;
+                if (ViewportImage.GraphicsDeviceService.UseDeviceEx) pool = Pool.Default;
                 else pool = Pool.Managed;
-                if ((vertexBufferLength != vertices.Length) || (vertexBuffer == null))
+                if ((VertexBufferLength != _vertices.Length) || (VertexBuffer == null))
                 {
-                    if (vertexBuffer != null) vertexBuffer.Dispose();
-                    vertexBuffer = new VertexBuffer(graphicsDevice, vertices.Length * VertexPositionNormalColor.SizeInBytes,
+                    if (VertexBuffer != null) VertexBuffer.Dispose();
+                    VertexBuffer = new VertexBuffer(graphicsDevice, _vertices.Length * VertexPositionNormalColor.SizeInBytes,
                     Usage.WriteOnly, VertexFormat.Position | VertexFormat.Normal | VertexFormat.Diffuse, pool);
-                    vertexBufferLength = vertices.Length;
+                    VertexBufferLength = _vertices.Length;
                 }
 
-                using (DataStream stream = vertexBuffer.Lock(0, 0, LockFlags.None))
+                using (var stream = VertexBuffer.Lock(0, 0, LockFlags.None))
                 {
-                    stream.WriteRange(vertices);
-                    vertexBuffer.Unlock();
+                    stream.WriteRange(_vertices);
+                    VertexBuffer.Unlock();
                 }
 
                 graphicsDevice.VertexFormat = VertexFormat.Position | VertexFormat.Normal | VertexFormat.Diffuse;
 
-                if ((indexBufferLength != indices.Length) || (indexBuffer == null))
+                if ((IndexBufferLength != _indices.Length) || (IndexBuffer == null))
                 {
-                    if (indexBuffer != null) indexBuffer.Dispose();
-                    indexBuffer = new IndexBuffer(graphicsDevice, indices.Length * Marshal.SizeOf(typeof(int)),
+                    if (IndexBuffer != null) IndexBuffer.Dispose();
+                    IndexBuffer = new IndexBuffer(graphicsDevice, _indices.Length * Marshal.SizeOf(typeof(int)),
                         Usage.WriteOnly, pool, false);
-                    indexBufferLength = indices.Length;
+                    IndexBufferLength = _indices.Length;
                 }
 
-                using (DataStream streamIndex = indexBuffer.Lock(0, 0, LockFlags.None))
+                using (var streamIndex = IndexBuffer.Lock(0, 0, LockFlags.None))
                 {
-                    streamIndex.WriteRange(indices);
-                    indexBuffer.Unlock();
+                    streamIndex.WriteRange(_indices);
+                    IndexBuffer.Unlock();
                 }
             }
         }
@@ -420,16 +418,16 @@ namespace IronPlot.Plotting3D
         protected void UpdateModelVertices(IEnumerable<double> x, IEnumerable<double> y, IEnumerable<double> z, int lengthU, int lengthV)
         {
             // Changing everything: just recreate array: 
-            modelVertices = new Point3D[lengthU * lengthV];
-            int index = 0;
+            _modelVertices = new Point3D[lengthU * lengthV];
+            var index = 0;
             IEnumerator<double> xi, yi, zi;
             xi = x.GetEnumerator(); yi = y.GetEnumerator(); zi = z.GetEnumerator(); 
-            for (int v = 0; v < lengthV; v++)
+            for (var v = 0; v < lengthV; v++)
             {
-                for (int u = 0; u < lengthU; u++)
+                for (var u = 0; u < lengthU; u++)
                 {
                     xi.MoveNext(); yi.MoveNext(); zi.MoveNext(); 
-                    modelVertices[index] = new Point3D(xi.Current, yi.Current, zi.Current);
+                    _modelVertices[index] = new Point3D(xi.Current, yi.Current, zi.Current);
                     index++;
                 }
             }
@@ -449,11 +447,11 @@ namespace IronPlot.Plotting3D
         {
             base.Draw();
 
-            if (vertexBuffer == null || indexBuffer == null) return;
+            if (VertexBuffer == null || IndexBuffer == null) return;
 
             graphicsDevice.SetRenderState(RenderState.SpecularEnable, true);
 
-            graphicsDevice.Material = material;
+            graphicsDevice.Material = _material;
             graphicsDevice.SetRenderState(RenderState.Ambient, Color.DarkGray.ToArgb());
             graphicsDevice.SetRenderState(RenderState.SpecularEnable, true);
 
@@ -462,16 +460,16 @@ namespace IronPlot.Plotting3D
             graphicsDevice.SetRenderState(RenderState.ZFunc, Compare.LessEqual); 
             graphicsDevice.SetRenderState(RenderState.NormalizeNormals, true);
 
-            for (int i = 0; i < lights.Count; ++i)
+            for (var i = 0; i < lights.Count; ++i)
             {
-                SharpDX.Direct3D9.Light light = lights[i];
+                var light = lights[i];
                 graphicsDevice.SetLight(i, ref light);
                 graphicsDevice.EnableLight(i, true);
             }
 
             graphicsDevice.VertexFormat = VertexFormat.Position | VertexFormat.Normal | VertexFormat.Diffuse;
-            graphicsDevice.SetStreamSource(0, vertexBuffer, 0, Marshal.SizeOf(typeof(VertexPositionNormalColor)));
-            graphicsDevice.Indices = indexBuffer;
+            graphicsDevice.SetStreamSource(0, VertexBuffer, 0, Marshal.SizeOf(typeof(VertexPositionNormalColor)));
+            graphicsDevice.Indices = IndexBuffer;
 
             graphicsDevice.SetRenderState(RenderState.AlphaBlendEnable, true);
             graphicsDevice.SetRenderState(RenderState.BlendOperationAlpha, BlendOperation.Add);
@@ -479,7 +477,7 @@ namespace IronPlot.Plotting3D
             graphicsDevice.SetRenderState(RenderState.DestinationBlend, Blend.InverseSourceAlpha);
             graphicsDevice.SetRenderState(RenderState.SeparateAlphaBlendEnable, false);
             graphicsDevice.SetRenderState(RenderState.CullMode, Cull.Counterclockwise);
-            int primitiveCount = indices.Length / 3;
+            var primitiveCount = _indices.Length / 3;
 
             graphicsDevice.SetRenderState(RenderState.Lighting, true);
 
@@ -492,7 +490,7 @@ namespace IronPlot.Plotting3D
                 graphicsDevice.SetRenderState(RenderState.FillMode, FillMode.Wireframe);
                 if (MeshLines == MeshLines.Triangles)
                 {
-                    graphicsDevice.DrawIndexedPrimitive(PrimitiveType.TriangleList, 0, 0, vertices.Length, 0, primitiveCount);
+                    graphicsDevice.DrawIndexedPrimitive(PrimitiveType.TriangleList, 0, 0, _vertices.Length, 0, primitiveCount);
                 }
                 //else graphicsDevice.DrawIndexedPrimitives(PrimitiveType.LineStrip, 0, 0, vertices.Length, 0, 1);
             }
@@ -503,16 +501,16 @@ namespace IronPlot.Plotting3D
                 graphicsDevice.SetRenderState(RenderState.DiffuseMaterialSource, ColorSource.Color1);
                 graphicsDevice.SetRenderState(RenderState.SpecularMaterialSource, ColorSource.Color1);
                 graphicsDevice.SetRenderState(RenderState.FillMode, FillMode.Solid);
-                graphicsDevice.DrawIndexedPrimitive(PrimitiveType.TriangleList, 0, 0, vertices.Length, 0, primitiveCount);
+                graphicsDevice.DrawIndexedPrimitive(PrimitiveType.TriangleList, 0, 0, _vertices.Length, 0, primitiveCount);
             }
         }
 
         protected override void DisposeDisposables()
         {
             base.DisposeDisposables();
-            if (vertexBuffer != null) vertexBuffer.Dispose();
-            if (indexBuffer != null) indexBuffer.Dispose();
-            vertexBuffer = null; indexBuffer = null;
+            if (VertexBuffer != null) VertexBuffer.Dispose();
+            if (IndexBuffer != null) IndexBuffer.Dispose();
+            VertexBuffer = null; IndexBuffer = null;
         }
 
         protected override void RecreateDisposables()

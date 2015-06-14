@@ -1,9 +1,6 @@
 ﻿using System.Collections;
-using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Linq;
-using System.Windows;
-using System.Windows.Controls;
 
 namespace IronPlot
 {
@@ -32,9 +29,9 @@ namespace IronPlot
             }
             set
             {
-                IEnumerable oldValue = _collection;
-                INotifyCollectionChanged oldObservableCollection = oldValue as INotifyCollectionChanged;
-                INotifyCollectionChanged newObservableCollection = value as INotifyCollectionChanged;
+                var oldValue = _collection;
+                var oldObservableCollection = oldValue as INotifyCollectionChanged;
+                var newObservableCollection = value as INotifyCollectionChanged;
                 _collection = value;
 
                 if (oldObservableCollection != null)
@@ -74,12 +71,12 @@ namespace IronPlot
                 }
                 else if (e.Action == NotifyCollectionChangedAction.Replace)
                 {
-                    for (int cnt = 0; cnt < e.OldItems.Count; cnt++)
+                    for (var cnt = 0; cnt < e.OldItems.Count; cnt++)
                     {
-                        T oldItem = e.OldItems[cnt] as T;
-                        T newItem = e.NewItems[cnt] as T;
+                        var oldItem = e.OldItems[cnt] as T;
+                        var newItem = e.NewItems[cnt] as T;
 
-                        int index = TargetList.IndexOf(oldItem);
+                        var index = TargetList.IndexOf(oldItem);
 
                         if (index != -1)
                         {
@@ -103,11 +100,11 @@ namespace IronPlot
                     }
                     else if (e.Action == NotifyCollectionChangedAction.Add && e.NewItems != null)
                     {
-                        int startingIndex = e.NewStartingIndex;
+                        var startingIndex = e.NewStartingIndex;
                         if (startingIndex != 0)
                         {
-                            T previousElement = Collection.FastElementAt<T>(startingIndex - 1);
-                            int targetListIndex = TargetList.IndexOf(previousElement);
+                            var previousElement = Collection.FastElementAt<T>(startingIndex - 1);
+                            var targetListIndex = TargetList.IndexOf(previousElement);
                             if (targetListIndex != -1)
                             {
                                 startingIndex = targetListIndex + 1;
@@ -115,8 +112,8 @@ namespace IronPlot
                         }
                         else if (Collection.FastCount() > 1)
                         {
-                            T nextElement = Collection.FastElementAt<T>(startingIndex + 1);
-                            int targetListIndex = TargetList.IndexOf(nextElement);
+                            var nextElement = Collection.FastElementAt<T>(startingIndex + 1);
+                            var targetListIndex = TargetList.IndexOf(nextElement);
                             if (targetListIndex == -1)
                             {
                                 startingIndex = 0;
@@ -164,9 +161,9 @@ namespace IronPlot
         /// </summary>
         public void ClearItems()
         {
-            foreach (T item in this.Collection)
+            foreach (T item in Collection)
             {
-                this.TargetList.Remove(item);
+                TargetList.Remove(item);
             }
         }
     }

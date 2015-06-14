@@ -1,13 +1,8 @@
 ﻿// Copyright (c) 2010 Joe Moorhouse
 
-using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Linq;
-using System.Text;
 using System.Windows;
 using System.Windows.Data;
-using System.Reflection;
 
 namespace IronPlot.Plotting3D
 {
@@ -63,33 +58,27 @@ namespace IronPlot.Plotting3D
             set { SetValue(TicksVisibleProperty, value); }
         }
 
-        private Axis3DCollectionInternal axis3DCollection = new Axis3DCollectionInternal();
+        private readonly Axis3DCollectionInternal _axis3DCollection = new Axis3DCollectionInternal();
 
-        private LabelProperties axisLabelProperties = new LabelProperties();
+        private readonly LabelProperties _axisLabelProperties = new LabelProperties();
 
-        public LabelProperties AxisLabels
-        {
-            get { return axisLabelProperties; }
-        }
+        public LabelProperties AxisLabels => _axisLabelProperties;
 
-        private LabelProperties tickLabelProperties = new LabelProperties();
+        private readonly LabelProperties _tickLabelProperties = new LabelProperties();
 
-        public LabelProperties TickLabels
-        {
-            get { return tickLabelProperties; }
-        }
+        public LabelProperties TickLabels => _tickLabelProperties;
 
         protected void BindAxis3D(Axis3D axis)
         {
-            FieldInfo[] fields = this.GetType().GetFields();
-            foreach (FieldInfo field in fields)
+            var fields = GetType().GetFields();
+            foreach (var field in fields)
             {
-                DependencyProperty dp = (DependencyProperty)field.GetValue(this);
-                FieldInfo fieldInfo = axis.GetType().GetField(string.Concat(dp.Name, "Property"));
+                var dp = (DependencyProperty)field.GetValue(this);
+                var fieldInfo = axis.GetType().GetField(string.Concat(dp.Name, "Property"));
                 if (fieldInfo == null) fieldInfo = axis.GetType().BaseType.GetField(string.Concat(dp.Name, "Property"));
                 if (fieldInfo == null) fieldInfo = axis.GetType().BaseType.BaseType.GetField(string.Concat(dp.Name, "Property"));
-                DependencyProperty dpAxis = (DependencyProperty)(fieldInfo.GetValue(axis));
-                Binding bindingTransform = new Binding(dp.Name);
+                var dpAxis = (DependencyProperty)(fieldInfo.GetValue(axis));
+                var bindingTransform = new Binding(dp.Name);
                 bindingTransform.Source = this;
                 bindingTransform.Mode = BindingMode.OneWay;
                 BindingOperations.SetBinding(axis, dpAxis, bindingTransform);
@@ -98,24 +87,19 @@ namespace IronPlot.Plotting3D
 
         internal void AddAxis(Axis3D axis)
         {
-            axis3DCollection.Add(axis);
+            _axis3DCollection.Add(axis);
             BindAxis3D(axis);
         }
 
         public Axis3D this[int index]
         {
-            set { axis3DCollection[index] = value; }
-            get { return axis3DCollection[index]; }
+            set { _axis3DCollection[index] = value; }
+            get { return _axis3DCollection[index]; }
         }
     }
     
     internal class Axis3DCollectionInternal : Collection<Axis3D>
     {
-
-        public Axis3DCollectionInternal() : base()
-        {
-        }
-
         protected override void InsertItem(int index, Axis3D newItem)
         {
             base.InsertItem(index, newItem);

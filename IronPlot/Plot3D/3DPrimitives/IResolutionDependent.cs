@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
-namespace IronPlot.Plotting3D
+﻿namespace IronPlot.Plotting3D
 {
     /// <summary>
     /// Interface to be implemented by a primitive whose rendering depends

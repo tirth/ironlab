@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 
 namespace IronPlot
 {
@@ -10,26 +9,26 @@ namespace IronPlot
     /// </summary>
     public class DirectImageTracker
     {
-        List<DirectImage> imageList = new List<DirectImage>();
+        readonly List<DirectImage> _imageList = new List<DirectImage>();
 
         public void Register(DirectImage image)
         {
-            if (imageList.Contains(image)) throw new Exception("Multiple registration attempted."); 
-            imageList.Add(image);
+            if (_imageList.Contains(image)) throw new Exception("Multiple registration attempted."); 
+            _imageList.Add(image);
         }
 
         public void Unregister(DirectImage image)
         {
-            imageList.Remove(image);
+            _imageList.Remove(image);
         }
 
         public void GetSizeForMembers(out int width, out int height)
         {
-            if (imageList.Count == 0) width = height = 0;
+            if (_imageList.Count == 0) width = height = 0;
             else
             {
-                width = imageList.Max(t => t.ViewportWidth);
-                height = imageList.Max(t => t.ViewportHeight);
+                width = _imageList.Max(t => t.ViewportWidth);
+                height = _imageList.Max(t => t.ViewportHeight);
             }
         }
     }

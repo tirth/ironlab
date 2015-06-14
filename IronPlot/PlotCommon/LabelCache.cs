@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Windows.Controls;
 
 namespace IronPlot
@@ -41,7 +39,7 @@ namespace IronPlot
     {
         public void Invalidate()
         {
-            foreach (LabelCacheItem item in this) item.CacheKey = String.Empty;
+            foreach (var item in this) item.CacheKey = String.Empty;
         }
     }
 }

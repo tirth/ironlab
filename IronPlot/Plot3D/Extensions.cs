@@ -1,20 +1,15 @@
 ﻿// Copyright (c) 2010 Joe Moorhouse
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using SharpDX;
-using SharpDX.Direct3D9;
 using System.Windows;
+using SharpDX;
 
 namespace IronPlot.ManagedD3D
 {
     public static class Extensions
     {
-        public static SharpDX.Vector3 ToVector3(this SharpDX.Vector4 vector4)
+        public static Vector3 ToVector3(this Vector4 vector4)
         {
-            return new SharpDX.Vector3(vector4.X, vector4.Y, vector4.Z);
+            return new Vector3(vector4.X, vector4.Y, vector4.Z);
         }
     }
 }
@@ -36,8 +31,8 @@ namespace IronPlot
 
         public Line(Vector pointOnLine, Vector direction)
         {
-            this.PointOnLine = pointOnLine;
-            this.Direction = direction;
+            PointOnLine = pointOnLine;
+            Direction = direction;
         }
 
         public Vector GetNormalDirection()
@@ -47,11 +42,11 @@ namespace IronPlot
 
         public Vector IntersectionWithLine(Line line)
         {
-            Vector a = this.Direction;
-            Vector b = line.Direction;
-            Vector c = line.PointOnLine - this.PointOnLine;
-            double lamdba = Vector.CrossProduct(c, b) / Vector.CrossProduct(a, b);
-            return this.PointOnLine + lamdba * this.Direction;
+            var a = Direction;
+            var b = line.Direction;
+            var c = line.PointOnLine - PointOnLine;
+            var lamdba = Vector.CrossProduct(c, b) / Vector.CrossProduct(a, b);
+            return PointOnLine + lamdba * Direction;
         }
     }
 
@@ -59,7 +54,7 @@ namespace IronPlot
     {
         public static double PointToLineDistance(Vector point, Line line)
         {
-            Vector normal = line.GetNormalDirection();
+            var normal = line.GetNormalDirection();
             normal.Normalize();
             return Vector.Multiply(normal, line.PointOnLine - point);
         }

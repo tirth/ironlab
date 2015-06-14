@@ -1,21 +1,10 @@
 ﻿// Copyright (c) 2010 Joe Moorhouse
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Media3D;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
-using System.Diagnostics;
 
 namespace IronPlot.Plotting3D
 {
@@ -39,12 +28,9 @@ namespace IronPlot.Plotting3D
             typeof(Axes3D),
                 new PropertyMetadata(1.5, LineThicknessChanged));
 
-        private LabelProperties labelProperties;
+        private readonly LabelProperties _labelProperties;
 
-        public LabelProperties Labels
-        {
-            get { return labelProperties; }
-        }
+        public LabelProperties Labels => _labelProperties;
 
         public Point3D GraphMin
         {
@@ -73,7 +59,7 @@ namespace IronPlot.Plotting3D
 
         protected static void LineThicknessChanged(DependencyObject obj, DependencyPropertyChangedEventArgs args)
         {
-            Axes3D axes = obj as Axes3D;
+            var axes = obj as Axes3D;
             foreach (LinesModel3D model in axes.Children)
             {
                 model.LineThickness = (double)args.NewValue;
@@ -86,80 +72,71 @@ namespace IronPlot.Plotting3D
 
         public LinesModel3D MinusX, PlusX, MinusY, PlusY, MinusZ, PlusZ, Base;
 
-        protected MatrixTransform3D modelToWorld = (MatrixTransform3D)MatrixTransform3D.Identity;
+        protected MatrixTransform3D modelToWorld = (MatrixTransform3D)Transform3D.Identity;
 
-        private Axis3DCollection xAxisCollection = new Axis3DCollection();
-        private Axis3DCollection yAxisCollection = new Axis3DCollection();
-        private Axis3DCollection zAxisCollection = new Axis3DCollection();
+        private readonly Axis3DCollection _xAxisCollection = new Axis3DCollection();
+        private readonly Axis3DCollection _yAxisCollection = new Axis3DCollection();
+        private readonly Axis3DCollection _zAxisCollection = new Axis3DCollection();
 
-        private XAxis3D[] xAxes;
-        private YAxis3D[] yAxes;
-        private ZAxis3D[] zAxes;
-        private LinesModel3D[] sides;
+        private readonly XAxis3D[] _xAxes;
+        private readonly YAxis3D[] _yAxes;
+        private readonly ZAxis3D[] _zAxes;
+        private readonly LinesModel3D[] _sides;
 
-        public Axis3DCollection XAxes
+        public Axis3DCollection XAxes => _xAxisCollection;
+
+        public Axis3DCollection YAxes => _yAxisCollection;
+
+        public Axis3DCollection ZAxes => _zAxisCollection;
+
+        public Axes3D()
         {
-            get { return xAxisCollection; }
-        }
+            _labelProperties = new LabelProperties();
+            _xAxisCollection.TickLabels.SetParent(_labelProperties);
+            _yAxisCollection.TickLabels.SetParent(_labelProperties);
+            _zAxisCollection.TickLabels.SetParent(_labelProperties);
+            _xAxisCollection.AxisLabels.Text = "X";
+            _yAxisCollection.AxisLabels.Text = "Y";
+            _zAxisCollection.AxisLabels.Text = "Z";
 
-        public Axis3DCollection YAxes
-        {
-            get { return yAxisCollection; }
-        }
+            _sides = new LinesModel3D[6]; 
+            MinusX = new LinesModel3D(); _sides[(int)GraphSides.MinusX] = MinusX;
+            MinusY = new LinesModel3D(); _sides[(int)GraphSides.MinusY] = MinusY;
+            MinusZ = new LinesModel3D(); _sides[(int)GraphSides.MinusZ] = MinusZ;
+            PlusX = new LinesModel3D(); _sides[(int)GraphSides.PlusX] = PlusX;
+            PlusY = new LinesModel3D(); _sides[(int)GraphSides.PlusY] = PlusY;
+            PlusZ = new LinesModel3D(); _sides[(int)GraphSides.PlusZ] = PlusZ;
 
-        public Axis3DCollection ZAxes
-        {
-            get { return zAxisCollection; }
-        }
+            Children.Add(MinusX);
+            Children.Add(PlusX);
+            Children.Add(MinusY);
+            Children.Add(PlusY);
+            Children.Add(MinusZ);
+            Children.Add(PlusZ);
 
-        public Axes3D() : base()
-        {
-            labelProperties = new LabelProperties();
-            xAxisCollection.TickLabels.SetParent(labelProperties);
-            yAxisCollection.TickLabels.SetParent(labelProperties);
-            zAxisCollection.TickLabels.SetParent(labelProperties);
-            xAxisCollection.AxisLabels.Text = "X";
-            yAxisCollection.AxisLabels.Text = "Y";
-            zAxisCollection.AxisLabels.Text = "Z";
-
-            sides = new LinesModel3D[6]; 
-            MinusX = new LinesModel3D(); sides[(int)GraphSides.MinusX] = MinusX;
-            MinusY = new LinesModel3D(); sides[(int)GraphSides.MinusY] = MinusY;
-            MinusZ = new LinesModel3D(); sides[(int)GraphSides.MinusZ] = MinusZ;
-            PlusX = new LinesModel3D(); sides[(int)GraphSides.PlusX] = PlusX;
-            PlusY = new LinesModel3D(); sides[(int)GraphSides.PlusY] = PlusY;
-            PlusZ = new LinesModel3D(); sides[(int)GraphSides.PlusZ] = PlusZ;
-
-            this.Children.Add(MinusX);
-            this.Children.Add(PlusX);
-            this.Children.Add(MinusY);
-            this.Children.Add(PlusY);
-            this.Children.Add(MinusZ);
-            this.Children.Add(PlusZ);
-
-            xAxes = new XAxis3D[2];
-            yAxes = new YAxis3D[2];
-            zAxes = new ZAxis3D[4];
+            _xAxes = new XAxis3D[2];
+            _yAxes = new YAxis3D[2];
+            _zAxes = new ZAxis3D[4];
             // X Axes
-            xAxes[(int)XAxisType.MinusY] = new XAxis3D(this, xAxisCollection, XAxisType.MinusY);
-            xAxes[(int)XAxisType.PlusY] = new XAxis3D(this, xAxisCollection, XAxisType.PlusY);
-            xAxisCollection.AddAxis(xAxes[(int)XAxisType.MinusY]); xAxisCollection.AddAxis(xAxes[(int)XAxisType.PlusY]); 
+            _xAxes[(int)XAxisType.MinusY] = new XAxis3D(this, _xAxisCollection, XAxisType.MinusY);
+            _xAxes[(int)XAxisType.PlusY] = new XAxis3D(this, _xAxisCollection, XAxisType.PlusY);
+            _xAxisCollection.AddAxis(_xAxes[(int)XAxisType.MinusY]); _xAxisCollection.AddAxis(_xAxes[(int)XAxisType.PlusY]); 
 
             // Y Axes
-            yAxes[(int)YAxisType.MinusX] = new YAxis3D(this, yAxisCollection, YAxisType.MinusX);
-            yAxes[(int)YAxisType.PlusX] = new YAxis3D(this, yAxisCollection, YAxisType.PlusX);
-            yAxisCollection.AddAxis(yAxes[(int)YAxisType.MinusX]); yAxisCollection.AddAxis(yAxes[(int)YAxisType.PlusX]); 
+            _yAxes[(int)YAxisType.MinusX] = new YAxis3D(this, _yAxisCollection, YAxisType.MinusX);
+            _yAxes[(int)YAxisType.PlusX] = new YAxis3D(this, _yAxisCollection, YAxisType.PlusX);
+            _yAxisCollection.AddAxis(_yAxes[(int)YAxisType.MinusX]); _yAxisCollection.AddAxis(_yAxes[(int)YAxisType.PlusX]); 
 
             // Z Axes
-            zAxes[(int)ZAxisType.MinusXMinusY] = new ZAxis3D(this, zAxisCollection, ZAxisType.MinusXMinusY);
-            zAxes[(int)ZAxisType.MinusXPlusY] = new ZAxis3D(this, zAxisCollection, ZAxisType.MinusXPlusY);
-            zAxes[(int)ZAxisType.PlusXMinusY] = new ZAxis3D(this, zAxisCollection, ZAxisType.PlusXMinusY);
-            zAxes[(int)ZAxisType.PlusXPlusY] = new ZAxis3D(this, zAxisCollection, ZAxisType.PlusXPlusY);
-            zAxisCollection.AddAxis(zAxes[(int)ZAxisType.MinusXMinusY]); zAxisCollection.AddAxis(zAxes[(int)ZAxisType.MinusXPlusY]);
-            zAxisCollection.AddAxis(zAxes[(int)ZAxisType.PlusXMinusY]); zAxisCollection.AddAxis(zAxes[(int)ZAxisType.PlusXPlusY]);
+            _zAxes[(int)ZAxisType.MinusXMinusY] = new ZAxis3D(this, _zAxisCollection, ZAxisType.MinusXMinusY);
+            _zAxes[(int)ZAxisType.MinusXPlusY] = new ZAxis3D(this, _zAxisCollection, ZAxisType.MinusXPlusY);
+            _zAxes[(int)ZAxisType.PlusXMinusY] = new ZAxis3D(this, _zAxisCollection, ZAxisType.PlusXMinusY);
+            _zAxes[(int)ZAxisType.PlusXPlusY] = new ZAxis3D(this, _zAxisCollection, ZAxisType.PlusXPlusY);
+            _zAxisCollection.AddAxis(_zAxes[(int)ZAxisType.MinusXMinusY]); _zAxisCollection.AddAxis(_zAxes[(int)ZAxisType.MinusXPlusY]);
+            _zAxisCollection.AddAxis(_zAxes[(int)ZAxisType.PlusXMinusY]); _zAxisCollection.AddAxis(_zAxes[(int)ZAxisType.PlusXPlusY]);
 
             Base = new LinesModel3D(); 
-            this.Children.Add(Base); // Add base last so that this can overwrite other lines.
+            Children.Add(Base); // Add base last so that this can overwrite other lines.
             PlusZ.IsVisible = false;
             // Note axes are already added as Children
             Generate();
@@ -169,8 +146,8 @@ namespace IronPlot.Plotting3D
         {
  	        base.OnViewportImageChanged(newViewportImage);
             UpdateLabels();
-            this.OnDraw -= new OnDrawEventHandler(OnDrawUpdate);
-            this.OnDraw += new OnDrawEventHandler(OnDrawUpdate);
+            OnDraw -= OnDrawUpdate;
+            OnDraw += OnDrawUpdate;
         }
 
         /// <summary>
@@ -181,14 +158,14 @@ namespace IronPlot.Plotting3D
             UpdateLabelPositions();
         }
 
-        double PIBy2 = Math.PI / 2;
-        double PI = Math.PI;
+        readonly double _piBy2 = Math.PI / 2;
+        readonly double _pi = Math.PI;
 
         internal void UpdateOpenSides(double phi)
         {
-            if (phi > 0 && phi < PIBy2) SetVisibleSidesAndAxes(OpenSides.PlusXPlusY);
-            else if (phi >= PIBy2 && phi <= PI) SetVisibleSidesAndAxes(OpenSides.MinusXPlusY);
-            else if (phi <= 0 && phi > -PIBy2) SetVisibleSidesAndAxes(OpenSides.PlusXMinusY);
+            if (phi > 0 && phi < _piBy2) SetVisibleSidesAndAxes(OpenSides.PlusXPlusY);
+            else if (phi >= _piBy2 && phi <= _pi) SetVisibleSidesAndAxes(OpenSides.MinusXPlusY);
+            else if (phi <= 0 && phi > -_piBy2) SetVisibleSidesAndAxes(OpenSides.PlusXMinusY);
             else SetVisibleSidesAndAxes(OpenSides.MinusXMinusY);
         }
 
@@ -237,20 +214,20 @@ namespace IronPlot.Plotting3D
                     visibleZAxis = (int)ZAxisType.PlusXMinusY;
                     break;
             }
-            foreach (XAxis3D axis in xAxes) { axis.LabelsVisible = false; axis.TicksVisible = false; }
-            foreach (YAxis3D axis in yAxes) { axis.LabelsVisible = false; axis.TicksVisible = false; }
-            foreach (ZAxis3D axis in zAxes) { axis.LabelsVisible = false; axis.TicksVisible = false; }
-            xAxes[visibleXAxis].LabelsVisible = true; xAxes[visibleXAxis].TicksVisible = true;
-            yAxes[visibleYAxis].LabelsVisible = true; yAxes[visibleYAxis].TicksVisible = true;
-            zAxes[visibleZAxis].LabelsVisible = true; zAxes[visibleZAxis].TicksVisible = true;
-            foreach (LinesModel3D side in sides) { side.IsVisible = true; }
-            sides[openSide1].IsVisible = false; sides[openSide2].IsVisible = false;
+            foreach (var axis in _xAxes) { axis.LabelsVisible = false; axis.TicksVisible = false; }
+            foreach (var axis in _yAxes) { axis.LabelsVisible = false; axis.TicksVisible = false; }
+            foreach (var axis in _zAxes) { axis.LabelsVisible = false; axis.TicksVisible = false; }
+            _xAxes[visibleXAxis].LabelsVisible = true; _xAxes[visibleXAxis].TicksVisible = true;
+            _yAxes[visibleYAxis].LabelsVisible = true; _yAxes[visibleYAxis].TicksVisible = true;
+            _zAxes[visibleZAxis].LabelsVisible = true; _zAxes[visibleZAxis].TicksVisible = true;
+            foreach (var side in _sides) { side.IsVisible = true; }
+            _sides[openSide1].IsVisible = false; _sides[openSide2].IsVisible = false;
             PlusZ.IsVisible = false;
         }
 
         internal void RedrawAxesLines()
         {
-            foreach (Model3D model in Children)
+            foreach (var model in Children)
             {
                 (model as LinesModel3D).UpdateFromPoints();
             }
@@ -268,14 +245,14 @@ namespace IronPlot.Plotting3D
             Base.Points.Add(new Point3DColor(graphMin.X, graphMin.Y, graphMin.Z));
         }
 
-        internal void AddGridLines(List<Point3DColor> points, Face face, Ticks ticks, System.Windows.Media.Color gridColor)
+        internal void AddGridLines(List<Point3DColor> points, Face face, Ticks ticks, Color gridColor)
         {
-            List<Axis3D> axisList = new List<Axis3D>(3);
-            axisList.Add(xAxes[0]); axisList.Add(yAxes[0]); axisList.Add(zAxes[0]);
+            var axisList = new List<Axis3D>(3);
+            axisList.Add(_xAxes[0]); axisList.Add(_yAxes[0]); axisList.Add(_zAxes[0]);
             int constIndex; // Point dimension with all constant values
             double constValue;
             int ticksIndex; // Point dimension spanned by ticks
-            int lineIndex = 0; // Point dimension spanned by single line 
+            var lineIndex = 0; // Point dimension spanned by single line 
             constIndex = (int)face / 2;
             constValue = ((int)face % 2) == 0 ? axisList[constIndex].Min : axisList[constIndex].Max;
             ticksIndex = (int)ticks;
@@ -283,23 +260,23 @@ namespace IronPlot.Plotting3D
             {
                 return;
             }
-            for (int i = 0; i < 3; ++i)
+            for (var i = 0; i < 3; ++i)
             {
                 if ((i != constIndex) && (i != ticksIndex)) { lineIndex = i; break; }
             }
-            double[] ticksValue = axisList[ticksIndex].Ticks;
-            double min = axisList[ticksIndex].Min;
-            double max = axisList[ticksIndex].Max;
-            double[] lineValue = new double[2];
+            var ticksValue = axisList[ticksIndex].Ticks;
+            var min = axisList[ticksIndex].Min;
+            var max = axisList[ticksIndex].Max;
+            var lineValue = new double[2];
             lineValue[0] = axisList[lineIndex].Min;
             lineValue[1] = axisList[lineIndex].Max;
-            double[] startPoint = new Double[3];
-            double[] endPoint = new Double[3];
+            var startPoint = new Double[3];
+            var endPoint = new Double[3];
             startPoint[constIndex] = constValue;
             endPoint[constIndex] = constValue;
             startPoint[lineIndex] = lineValue[0];
             endPoint[lineIndex] = lineValue[1];
-            for (int i = 0; i < ticksValue.Length; ++i)
+            for (var i = 0; i < ticksValue.Length; ++i)
             {
                 if (ticksValue[i] == min || ticksValue[i] == max) continue;
                 startPoint[ticksIndex] = endPoint[ticksIndex] = ticksValue[i];
@@ -312,9 +289,9 @@ namespace IronPlot.Plotting3D
         {
             if (layer2D != null)
             {
-                foreach (XAxis3D axis in xAxes) axis.UpdateLabels();
-                foreach (YAxis3D axis in yAxes) axis.UpdateLabels();
-                foreach (ZAxis3D axis in zAxes) axis.UpdateLabels();
+                foreach (var axis in _xAxes) axis.UpdateLabels();
+                foreach (var axis in _yAxes) axis.UpdateLabels();
+                foreach (var axis in _zAxes) axis.UpdateLabels();
             }
         }
 
@@ -322,20 +299,20 @@ namespace IronPlot.Plotting3D
         {
             if (layer2D != null)
             {
-                foreach (XAxis3D axis in xAxes) axis.UpdateLabelPositions(true);
-                foreach (YAxis3D axis in yAxes) axis.UpdateLabelPositions(true);
-                foreach (ZAxis3D axis in zAxes) axis.UpdateLabelPositions(true);
+                foreach (var axis in _xAxes) axis.UpdateLabelPositions(true);
+                foreach (var axis in _yAxes) axis.UpdateLabelPositions(true);
+                foreach (var axis in _zAxes) axis.UpdateLabelPositions(true);
             }
         }
 
         protected void Generate()
         {
             Base.Points.Clear();
-            Point3D graphMin = GraphMin;
-            Point3D graphMax = GraphMax;
-            foreach (XAxis3D axis in xAxes) axis.DeriveTicks();
-            foreach (YAxis3D axis in yAxes) axis.DeriveTicks();
-            foreach (ZAxis3D axis in zAxes) axis.DeriveTicks();
+            var graphMin = GraphMin;
+            var graphMax = GraphMax;
+            foreach (var axis in _xAxes) axis.DeriveTicks();
+            foreach (var axis in _yAxes) axis.DeriveTicks();
+            foreach (var axis in _zAxes) axis.DeriveTicks();
             UpdateLabels();
             //
 

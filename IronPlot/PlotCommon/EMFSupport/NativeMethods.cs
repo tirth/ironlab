@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 
 namespace WpfToWmfClipboard
@@ -18,7 +17,7 @@ namespace WpfToWmfClipboard
         [return: MarshalAs(UnmanagedType.Bool)]
         internal static extern bool CloseClipboard();
         [DllImport("gdi32.dll")]
-        internal static extern IntPtr CopyEnhMetaFile(IntPtr hemfSrc, IntPtr hNULL);
+        internal static extern IntPtr CopyEnhMetaFile(IntPtr hemfSrc, IntPtr hNull);
         [DllImport("gdi32.dll")]
         [return: MarshalAs(UnmanagedType.Bool)]
         internal static extern bool DeleteEnhMetaFile(IntPtr hemf);

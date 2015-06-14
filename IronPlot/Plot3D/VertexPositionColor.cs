@@ -2,10 +2,9 @@
 
 //using Microsoft.Xna.Framework;
 //using Microsoft.Xna.Framework.Graphics;
-using SharpDX;
-using SharpDX.Direct3D9;
-using System.Runtime.InteropServices;
 
+using System.Runtime.InteropServices;
+using SharpDX;
 
 namespace IronPlot.Plotting3D
 {

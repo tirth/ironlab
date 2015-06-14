@@ -1,9 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.Linq;
-using System.Reflection;
 
 namespace IronPlot
 {
@@ -21,7 +19,7 @@ namespace IronPlot
         /// <returns>The number of elements in the sequence.</returns>
         public static int FastCount(this IEnumerable that)
         {
-            IList list = that as IList;
+            var list = that as IList;
             if (list != null)
             {
                 return list.Count;
@@ -37,7 +35,7 @@ namespace IronPlot
         /// <returns>Whether the sequence is empty or not.</returns>
         public static bool IsEmpty<T>(this IEnumerable<T> that)
         {
-            IEnumerator<T> enumerator = that.GetEnumerator();
+            var enumerator = that.GetEnumerator();
             return !enumerator.MoveNext();
         }
 
@@ -54,7 +52,7 @@ namespace IronPlot
             where T : class
         {
             IComparable result = null;
-            T minimum = default(T);
+            var minimum = default(T);
             if (!that.Any())
             {
                 return minimum;
@@ -62,9 +60,9 @@ namespace IronPlot
 
             minimum = that.First();
             result = projectionFunction(minimum);
-            foreach (T item in that.Skip(1))
+            foreach (var item in that.Skip(1))
             {
-                IComparable currentResult = projectionFunction(item);
+                var currentResult = projectionFunction(item);
                 if (result.CompareTo(currentResult) > 0)
                 {
                     result = currentResult;
@@ -104,10 +102,7 @@ namespace IronPlot
             {
                 return 0.0;
             }
-            else
-            {
-                return that.Sum();
-            }
+            return that.Sum();
         }
 
         /// <summary>
@@ -123,7 +118,7 @@ namespace IronPlot
             where T : class
         {
             IComparable result = null;
-            T maximum = default(T);
+            var maximum = default(T);
             if (!that.Any())
             {
                 return maximum;
@@ -131,9 +126,9 @@ namespace IronPlot
 
             maximum = that.First();
             result = projectionFunction(maximum);
-            foreach (T item in that.Skip(1))
+            foreach (var item in that.Skip(1))
             {
-                IComparable currentResult = projectionFunction(item);
+                var currentResult = projectionFunction(item);
                 if (result.CompareTo(currentResult) < 0)
                 {
                     result = currentResult;
@@ -175,10 +170,10 @@ namespace IronPlot
         /// <param name="func">The function to apply to the corresponding values
         /// from the two sequences.</param>
         /// <returns>A sequence of transformed values from both sequences.</returns>
-        public static IEnumerable<R> Zip<T0, T1, R>(IEnumerable<T0> enumerable0, IEnumerable<T1> enumerable1, Func<T0, T1, R> func)
+        public static IEnumerable<TR> Zip<T0, T1, TR>(IEnumerable<T0> enumerable0, IEnumerable<T1> enumerable1, Func<T0, T1, TR> func)
         {
-            IEnumerator<T0> enumerator0 = enumerable0.GetEnumerator();
-            IEnumerator<T1> enumerator1 = enumerable1.GetEnumerator();
+            var enumerator0 = enumerable0.GetEnumerator();
+            var enumerator1 = enumerable1.GetEnumerator();
             while (enumerator0.MoveNext() && enumerator1.MoveNext())
             {
                 yield return func(enumerator0.Current, enumerator1.Current);
@@ -305,10 +300,10 @@ namespace IronPlot
         /// <returns>The index of the item or -1 if not found.</returns>
         public static int IndexOf(this IEnumerable that, object value)
         {
-            int index = 0;
-            foreach (object item in that)
+            var index = 0;
+            foreach (var item in that)
             {
-                if (object.ReferenceEquals(value, item) || value.Equals(item))
+                if (ReferenceEquals(value, item) || value.Equals(item))
                 {
                     return index;
                 }
@@ -327,8 +322,8 @@ namespace IronPlot
         /// index in the sequence.</param>
         public static void ForEachWithIndex<T>(this IEnumerable<T> that, Action<T, int> action)
         {
-            int index = 0;
-            foreach (T item in that)
+            var index = 0;
+            foreach (var item in that)
             {
                 action(item, index);
                 index++;
@@ -437,14 +432,14 @@ namespace IronPlot
         public static T FastElementAt<T>(this IEnumerable that, int index)
         {
             {
-                IList<T> list = that as IList<T>;
+                var list = that as IList<T>;
                 if (list != null)
                 {
                     return list[index];
                 }
             }
             {
-                IList list = that as IList;
+                var list = that as IList;
                 if (list != null)
                 {
                     return (T)list[index];

@@ -1,7 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 
 namespace IronPlot
 {
@@ -16,9 +14,9 @@ namespace IronPlot
         public static IEnumerable<double> MeshGridX(IEnumerable<double> x, int yLength)
         {
             // Row major:
-            for (int j = 0; j < yLength; ++j)
+            for (var j = 0; j < yLength; ++j)
             {
-                foreach (double value in x)
+                foreach (var value in x)
                 {
                     yield return value;
                 }
@@ -34,9 +32,9 @@ namespace IronPlot
         public static IEnumerable<double> MeshGridY(IEnumerable<double> y, int xLength)
         {
             // Row major:
-            foreach (double value in y)
+            foreach (var value in y)
             {
-                for (int i = 0; i < xLength; ++i)
+                for (var i = 0; i < xLength; ++i)
                 {
                     yield return value;
                 }
@@ -45,8 +43,8 @@ namespace IronPlot
 
         public static double[] Counter(int n)
         {
-            double[] output = new double[n];
-            for (int i = 0; i < n; ++i)
+            var output = new double[n];
+            for (var i = 0; i < n; ++i)
             {
                 output[i] = i + 1;
             }
@@ -55,11 +53,11 @@ namespace IronPlot
 
         public static double[,] Counter(int width, int height)
         {
-            double[,] output = new double[width, height];
+            var output = new double[width, height];
             double index = 1;
-            for (int i = 0; i < width; ++i)
+            for (var i = 0; i < width; ++i)
             {
-                for (int j = 0; j < height; ++j)
+                for (var j = 0; j < height; ++j)
                 {
                     output[i, j] = index;
                     index += 1;
@@ -78,17 +76,17 @@ namespace IronPlot
 
         public class Slice2D
         {
-            int? Start0;
-            int? Stop0;
-            int? Step0;
-            int? Start1;
-            int? Stop1;
-            int? Step1;
+            int? _start0;
+            int? _stop0;
+            int? _step0;
+            int? _start1;
+            int? _stop1;
+            int? _step1;
 
             public Slice2D(int? start0, int? stop0, int? step0, int? start1, int? stop1, int? step1)
             {
-                this.Start0 = start0; this.Stop0 = stop0; this.Step0 = step0;
-                this.Start1 = start1; this.Stop1 = stop1; this.Step1 = step1;
+                _start0 = start0; _stop0 = stop0; _step0 = step0;
+                _start1 = start1; _stop1 = stop1; _step1 = step1;
             }
         }
     }

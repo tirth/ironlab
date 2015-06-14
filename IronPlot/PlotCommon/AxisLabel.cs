@@ -1,9 +1,9 @@
-﻿using System.Diagnostics.CodeAnalysis;
+﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
-using System;
 
 namespace IronPlot
 {
@@ -39,8 +39,8 @@ namespace IronPlot
         /// <param name="e">Event arguments.</param>
         private static void OnStringFormatPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
-            AxisLabel source = (AxisLabel)d;
-            string newValue = (string)e.NewValue;
+            var source = (AxisLabel)d;
+            var newValue = (string)e.NewValue;
             source.OnStringFormatPropertyChanged(newValue);
         }
 
@@ -94,7 +94,7 @@ namespace IronPlot
 #if SILVERLIGHT
             this.DefaultStyleKey = typeof(AxisLabel);
 #endif
-            this.SetBinding(FormattedContentProperty, new Binding { Converter = new StringFormatConverter(), ConverterParameter = StringFormat ?? "{0}" });
+            SetBinding(FormattedContentProperty, new Binding { Converter = new StringFormatConverter(), ConverterParameter = StringFormat ?? "{0}" });
         }
 
         /// <summary>
@@ -102,7 +102,7 @@ namespace IronPlot
         /// </summary>
         protected virtual void UpdateFormattedContent()
         {
-            this.SetBinding(FormattedContentProperty, new Binding { Converter = new StringFormatConverter(), ConverterParameter = StringFormat ?? "{0}" });
+            SetBinding(FormattedContentProperty, new Binding { Converter = new StringFormatConverter(), ConverterParameter = StringFormat ?? "{0}" });
         }
     }
 
@@ -138,7 +138,7 @@ namespace IronPlot
         /// process.</param>
         /// <param name="culture">The culture to use for the conversion.</param>
         /// <returns>The converted object.</returns>
-        public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
         {
             throw new NotSupportedException();
         }
